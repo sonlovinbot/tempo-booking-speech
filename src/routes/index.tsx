@@ -323,19 +323,35 @@ function Tempo() {
       const review: ReviewTask[] = parsed.map((t: ParsedTask) => {
         let startISO: string;
         let explicit = false;
+        let durationMin = t.durationMin;
         if (t.explicitStart) {
           startISO = isoFromSaigonHM(dateStr, t.explicitStart);
           explicit = true;
         } else {
-          startISO = findSlot(busyList, cursor, t.durationMin, dayEndISO);
+          startISO = findSlot(busyList, cursor, durationMin, dayEndISO);
         }
-        const endISO = new Date(
-          new Date(startISO).getTime() + t.durationMin * 60_000,
-        ).toISOString();
+        let endISO: string;
+        if (t.explicitEnd) {
+          endISO = isoFromSaigonHM(dateStr, t.explicitEnd);
+          // Nếu end <= start, đẩy end sang qua ngày không hợp lý → fallback dùng durationMin.
+          if (new Date(endISO).getTime() <= new Date(startISO).getTime()) {
+            endISO = new Date(
+              new Date(startISO).getTime() + durationMin * 60_000,
+            ).toISOString();
+          } else {
+            durationMin = Math.round(
+              (new Date(endISO).getTime() - new Date(startISO).getTime()) / 60_000,
+            );
+          }
+        } else {
+          endISO = new Date(
+            new Date(startISO).getTime() + durationMin * 60_000,
+          ).toISOString();
+        }
         // Reserve so subsequent tasks don't overlap
         busyList.push({ startISO, endISO });
         cursor = endISO;
-        return { title: t.title, durationMin: t.durationMin, startISO, endISO, explicit };
+        return { title: t.title, durationMin, startISO, endISO, explicit };
       });
 
       setTasks(review);
@@ -384,12 +400,18 @@ function Tempo() {
       const copy = [...prev];
       const cur = copy[index];
       const next = { ...cur, ...patch };
-      // Keep endISO consistent
-      if (patch.startISO || patch.durationMin) {
+      // Nếu chỉnh startISO mà chưa chỉnh endISO: giữ nguyên thời lượng, dịch end theo start.
+      if (patch.startISO && !patch.endISO) {
         next.endISO = new Date(
           new Date(next.startISO).getTime() + next.durationMin * 60_000,
         ).toISOString();
       }
+      // Luôn tính lại durationMin từ start/end.
+      const diff = Math.round(
+        (new Date(next.endISO).getTime() - new Date(next.startISO).getTime()) /
+          60_000,
+      );
+      next.durationMin = diff > 0 ? diff : next.durationMin;
       copy[index] = next;
       return copy;
     });
