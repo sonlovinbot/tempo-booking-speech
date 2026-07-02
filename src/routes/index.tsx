@@ -156,6 +156,41 @@ function fmtHM(iso: string) {
   }).format(new Date(iso));
 }
 
+function saigonDateStrOf(iso: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(iso));
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+function fmtDateLabel(iso: string) {
+  const dateStr = saigonDateStrOf(iso);
+  const today = saigonTodayDateStr();
+  const tomorrow = (() => {
+    const d = new Date(`${today}T00:00:00+07:00`);
+    d.setDate(d.getDate() + 1);
+    return saigonDateStrOf(d.toISOString());
+  })();
+  const yesterday = (() => {
+    const d = new Date(`${today}T00:00:00+07:00`);
+    d.setDate(d.getDate() - 1);
+    return saigonDateStrOf(d.toISOString());
+  })();
+  if (dateStr === today) return "Hôm nay";
+  if (dateStr === tomorrow) return "Ngày mai";
+  if (dateStr === yesterday) return "Hôm qua";
+  return new Intl.DateTimeFormat("vi-VN", {
+    timeZone: TZ,
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+  }).format(new Date(iso));
+}
+
 // ---------- Component ----------
 
 function Tempo() {
@@ -745,6 +780,11 @@ function ReviewView({
         <div className="h-px bg-border" />
 
         <div className="space-y-3">
+          <Row icon={<CalIcon className="h-4 w-4" />} label="Ngày">
+            <span className="text-sm text-muted-foreground capitalize">
+              {fmtDateLabel(task.startISO)}
+            </span>
+          </Row>
           <Row icon={<Clock className="h-4 w-4" />} label="Thời gian">
             <div className="flex items-center gap-1.5">
               <input
@@ -752,7 +792,7 @@ function ReviewView({
                 className="bg-input rounded-lg px-2 py-1 text-sm outline-none border border-border tabular-nums"
                 value={startHM}
                 onChange={(e) => {
-                  const dateStr = saigonTodayDateStr();
+                  const dateStr = saigonDateStrOf(task.startISO);
                   onChange({
                     startISO: isoFromSaigonHM(dateStr, e.target.value),
                   });
@@ -764,7 +804,7 @@ function ReviewView({
                 className="bg-input rounded-lg px-2 py-1 text-sm outline-none border border-border tabular-nums"
                 value={endHM}
                 onChange={(e) => {
-                  const dateStr = saigonTodayDateStr();
+                  const dateStr = saigonDateStrOf(task.endISO);
                   onChange({
                     endISO: isoFromSaigonHM(dateStr, e.target.value),
                   });
@@ -772,7 +812,7 @@ function ReviewView({
               />
             </div>
           </Row>
-          <Row icon={<CalIcon className="h-4 w-4" />} label="Thời lượng">
+          <Row icon={<Clock className="h-4 w-4" />} label="Thời lượng">
             <span className="text-sm tabular-nums text-muted-foreground">
               {durLabel}
             </span>
