@@ -69,6 +69,7 @@ export type ParsedTask = {
   explicitStart?: string; // "HH:mm" 24h
   explicitEnd?: string; // "HH:mm" 24h
   explicitDate?: string; // "YYYY-MM-DD" (Asia/Ho_Chi_Minh)
+  description?: string;
 };
 
 export const parseTasks = createServerFn({ method: "POST" })
@@ -105,7 +106,7 @@ export const parseTasks = createServerFn({ method: "POST" })
           content:
             "Bạn trích xuất danh sách công việc từ câu nói tiếng Việt.\n" +
             `Hiện tại (Asia/Ho_Chi_Minh): ${todayStr} ${nowStr}, ${weekdayVi}.\n` +
-            "Trả về JSON DUY NHẤT dạng: {\"tasks\":[{\"title\":string, \"durationMin\":number, \"explicitStart\":string|null, \"explicitEnd\":string|null, \"explicitDate\":string|null}]}\n" +
+            "Trả về JSON DUY NHẤT dạng: {\"tasks\":[{\"title\":string, \"durationMin\":number, \"explicitStart\":string|null, \"explicitEnd\":string|null, \"explicitDate\":string|null, \"description\":string|null}]}\n" +
             "\n" +
             "QUY TẮC NGÀY (explicitDate = YYYY-MM-DD hoặc null nếu không nói):\n" +
             "- 'hôm nay' = hôm nay. 'ngày mai' = +1 ngày. 'hôm qua' = -1 ngày. 'ngày kia' = +2 ngày.\n" +
@@ -129,6 +130,10 @@ export const parseTasks = createServerFn({ method: "POST" })
             "QUY TẮC THỜI LƯỢNG (durationMin = số phút, mặc định 30):\n" +
             "- '30 phút' = 30. 'một tiếng' / '1 tiếng' / '1 giờ' = 60. 'nửa tiếng' = 30. '90 phút' = 90. '1 tiếng rưỡi' = 90. '2 tiếng' = 120.\n" +
             "- Nếu đã có explicitStart + explicitEnd thì giữ durationMin=30 (client sẽ tự tính lại từ start/end).\n" +
+            "\n" +
+            "QUY TẮC MÔ TẢ (description):\n" +
+            "- title là tên việc ngắn gọn (3–8 từ). Nếu người dùng nói thêm chi tiết/ngữ cảnh (địa điểm, người tham gia, mục đích, ghi chú), đưa vào description (tối đa ~200 ký tự). Không lặp lại title.\n" +
+            "- Nếu không có chi tiết gì thêm, description = null.\n" +
             "\n" +
             "Chỉ trả JSON, không giải thích. Nếu chỉ 1 việc → mảng 1 phần tử.",
         },
@@ -181,12 +186,17 @@ export const parseTasks = createServerFn({ method: "POST" })
           /^\d{4}-\d{2}-\d{2}$/.test(o.explicitDate)
             ? o.explicitDate
             : undefined;
+        const desc =
+          typeof o.description === "string" && o.description.trim().length > 0
+            ? o.description.trim().slice(0, 500)
+            : undefined;
         return {
           title,
           durationMin: Number.isFinite(dur) && dur > 0 ? Math.round(dur) : 30,
           explicitStart: start,
           explicitEnd: end,
           explicitDate: date,
+          description: desc,
         };
       })
       .filter((t) => t.title.length > 0);
@@ -256,24 +266,65 @@ const CreateInput = z.object({
   title: z.string().min(1),
   startISO: z.string().min(1),
   endISO: z.string().min(1),
+  description: z.string().optional(),
+  reminderMin: z.number().int().nullable().optional(),
+  addMeet: z.boolean().optional(),
 });
 
 export const createEvent = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => CreateInput.parse(d))
   .handler(async ({ data }) => {
-    const res = await fetch(`${GCAL_BASE}/calendars/primary/events`, {
+    const body: Record<string, unknown> = {
+      summary: data.title,
+      start: { dateTime: data.startISO, timeZone: TZ },
+      end: { dateTime: data.endISO, timeZone: TZ },
+    };
+    if (data.description) body.description = data.description;
+    if (data.reminderMin === null) {
+      body.reminders = { useDefault: false, overrides: [] };
+    } else if (typeof data.reminderMin === "number") {
+      body.reminders = {
+        useDefault: false,
+        overrides: [{ method: "popup", minutes: data.reminderMin }],
+      };
+    }
+    if (data.addMeet) {
+      body.conferenceData = {
+        createRequest: {
+          requestId: crypto.randomUUID(),
+          conferenceSolutionKey: { type: "hangoutsMeet" },
+        },
+      };
+    }
+    const url = new URL(`${GCAL_BASE}/calendars/primary/events`);
+    if (data.addMeet) url.searchParams.set("conferenceDataVersion", "1");
+    const res = await fetch(url.toString(), {
       method: "POST",
       headers: gcalHeaders(),
-      body: JSON.stringify({
-        summary: data.title,
-        start: { dateTime: data.startISO, timeZone: TZ },
-        end: { dateTime: data.endISO, timeZone: TZ },
-      }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
       throw new Error(`Tạo event lỗi ${res.status}: ${txt.slice(0, 200)}`);
     }
-    const json = (await res.json()) as { id?: string; htmlLink?: string };
-    return { id: json.id ?? null, htmlLink: json.htmlLink ?? null };
+    const json = (await res.json()) as {
+      id?: string;
+      htmlLink?: string;
+      hangoutLink?: string;
+      conferenceData?: {
+        entryPoints?: Array<{ entryPointType?: string; uri?: string }>;
+        createRequest?: { status?: { statusCode?: string } };
+      };
+    };
+    const videoEntry = json.conferenceData?.entryPoints?.find(
+      (e) => e.entryPointType === "video" && !!e.uri,
+    );
+    const meetLink = videoEntry?.uri ?? json.hangoutLink ?? null;
+    const meetStatus = json.conferenceData?.createRequest?.status?.statusCode ?? null;
+    return {
+      id: json.id ?? null,
+      htmlLink: json.htmlLink ?? null,
+      meetLink,
+      meetStatus,
+    };
   });
