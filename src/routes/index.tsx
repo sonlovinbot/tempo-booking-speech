@@ -881,18 +881,28 @@ function ReviewView({
             </select>
           </Row>
           <Row icon={<Video className="h-4 w-4" />} label="Google Meet">
-            <button
-              type="button"
-              onClick={() => onChange({ addMeet: !task.addMeet })}
-              className={`h-7 px-3 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 ${
-                task.addMeet
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary text-muted-foreground hover:text-foreground"
-              }`}
-              aria-pressed={task.addMeet}
-            >
-              {task.addMeet ? "Tạo link" : "Không tạo"}
-            </button>
+            {task.addMeet ? (
+              <div className="flex items-center gap-1.5 h-7 pl-3 pr-1 rounded-full bg-primary/15 border border-primary/40 text-primary text-xs font-medium">
+                <Video className="h-3.5 w-3.5" />
+                <span>Sẽ tạo link Meet</span>
+                <button
+                  type="button"
+                  onClick={() => onChange({ addMeet: false })}
+                  className="h-5 w-5 rounded-full hover:bg-primary/20 flex items-center justify-center"
+                  aria-label="Xoá link Meet"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onChange({ addMeet: true })}
+                className="h-7 px-3 rounded-full text-xs font-medium bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Tạo link
+              </button>
+            )}
           </Row>
         </div>
 
@@ -915,16 +925,26 @@ function ReviewView({
         <button
           type="button"
           onClick={onSkip}
-          className="flex-1 h-12 rounded-full border border-border text-sm font-medium hover:bg-secondary transition-colors flex items-center justify-center gap-2"
+          disabled={creating}
+          className="flex-1 h-12 rounded-full border border-border text-sm font-medium hover:bg-secondary transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
         >
           <X className="h-4 w-4" /> Bỏ qua
         </button>
         <button
           type="button"
           onClick={onApprove}
-          className="flex-[1.4] h-12 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:brightness-110 transition-all flex items-center justify-center gap-2 purple-glow"
+          disabled={creating}
+          className="flex-[1.4] h-12 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:brightness-110 transition-all flex items-center justify-center gap-2 purple-glow disabled:opacity-70 disabled:pointer-events-none"
         >
-          <Check className="h-4 w-4" /> Thêm vào Calendar
+          {creating ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" /> Đang thêm…
+            </>
+          ) : (
+            <>
+              <Check className="h-4 w-4" /> Thêm vào Calendar
+            </>
+          )}
         </button>
       </div>
     </div>
