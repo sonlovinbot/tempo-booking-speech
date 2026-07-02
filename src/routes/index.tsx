@@ -17,6 +17,7 @@ import {
   Video,
   FileText,
 } from "lucide-react";
+import { toast } from "sonner";
 import {
   transcribeAudio,
   parseTasks,
@@ -214,6 +215,7 @@ function Tempo() {
   const [addedCount, setAddedCount] = useState(0);
   const [lastLink, setLastLink] = useState<string | null>(null);
   const [lastMeet, setLastMeet] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const transcribeFn = useServerFn(transcribeAudio);
   const parseFn = useServerFn(parseTasks);
@@ -438,6 +440,8 @@ function Tempo() {
 
   const approve = useCallback(async () => {
     if (!current) return;
+    if (creating) return;
+    setCreating(true);
     try {
       const res = await createFn({
         data: {
@@ -460,13 +464,20 @@ function Tempo() {
         });
         setLastMeet(res.meetLink);
       }
+      if (tasks.length > 1) {
+        toast.success(`Đã thêm "${current.title}"`, {
+          description: `${index + 1}/${tasks.length} task đã vào Calendar`,
+        });
+      }
       nextOrDone();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Không thêm được vào Calendar";
       setError(msg);
       setPhase("error");
+    } finally {
+      setCreating(false);
     }
-  }, [current, createFn, nextOrDone, index]);
+  }, [current, createFn, nextOrDone, index, tasks.length, creating]);
 
   const updateCurrent = (patch: Partial<ReviewTask>) => {
     setTasks((prev) => {
@@ -532,6 +543,7 @@ function Tempo() {
                   onSkip={skip}
                   onApprove={approve}
                   onChange={updateCurrent}
+                  creating={creating}
                 />
               )}
               {phase === "done" && (
