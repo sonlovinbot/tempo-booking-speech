@@ -68,6 +68,7 @@ export type ParsedTask = {
   durationMin: number;
   explicitStart?: string; // "HH:mm" 24h
   explicitEnd?: string; // "HH:mm" 24h
+  explicitDate?: string; // "YYYY-MM-DD" (Asia/Ho_Chi_Minh)
 };
 
 export const parseTasks = createServerFn({ method: "POST" })
@@ -83,6 +84,18 @@ export const parseTasks = createServerFn({ method: "POST" })
       minute: "2-digit",
       hour12: false,
     }).format(now);
+    const dateParts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: TZ,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(now);
+    const g = (t: string) => dateParts.find((p) => p.type === t)?.value ?? "";
+    const todayStr = `${g("year")}-${g("month")}-${g("day")}`; // YYYY-MM-DD
+    const weekdayVi = new Intl.DateTimeFormat("vi-VN", {
+      timeZone: TZ,
+      weekday: "long",
+    }).format(now); // "Thứ Hai" / "Chủ Nhật"
 
     const body = {
       model: "google/gemini-3-flash-preview",
@@ -90,13 +103,34 @@ export const parseTasks = createServerFn({ method: "POST" })
         {
           role: "system",
           content:
-            "Bạn trích xuất danh sách công việc từ câu nói tiếng Việt. " +
-            `Hiện tại là ${nowStr}. ` +
-            "Trả về JSON DUY NHẤT dạng {\"tasks\":[{\"title\":string, \"durationMin\":number, \"explicitStart\":string|null, \"explicitEnd\":string|null}]} " +
-            "trong đó explicitStart/explicitEnd là HH:mm 24h nếu người dùng nói giờ cụ thể, ngược lại null. " +
-            "Nếu người dùng nói một khoảng giờ (vd '20-23h', 'từ 9 tới 10 giờ') thì đặt cả explicitStart và explicitEnd; KHÔNG tự suy đoán durationMin trong trường hợp này, để nó = 30. " +
-            "Nếu chỉ có giờ bắt đầu và người dùng nói thời lượng (vd '1 tiếng', '15 phút') thì đặt durationMin theo đó. Mặc định durationMin=30. " +
-            "Nếu chỉ có 1 việc, mảng chứa 1 phần tử. Không thêm giải thích.",
+            "Bạn trích xuất danh sách công việc từ câu nói tiếng Việt.\n" +
+            `Hiện tại (Asia/Ho_Chi_Minh): ${todayStr} ${nowStr}, ${weekdayVi}.\n` +
+            "Trả về JSON DUY NHẤT dạng: {\"tasks\":[{\"title\":string, \"durationMin\":number, \"explicitStart\":string|null, \"explicitEnd\":string|null, \"explicitDate\":string|null}]}\n" +
+            "\n" +
+            "QUY TẮC NGÀY (explicitDate = YYYY-MM-DD hoặc null nếu không nói):\n" +
+            "- 'hôm nay' = hôm nay. 'ngày mai' = +1 ngày. 'hôm qua' = -1 ngày. 'ngày kia' = +2 ngày.\n" +
+            "- 'thứ Hai/Ba/Tư/Năm/Sáu/Bảy' hoặc 'Chủ Nhật' (không kèm 'tuần sau') = ngày đó GẦN NHẤT SẮP TỚI (>= hôm nay). Nếu hôm nay đúng thứ đó và câu ám chỉ sắp tới, dùng hôm nay; nếu đã qua giờ ám chỉ, dùng +7 ngày.\n" +
+            "- 'thứ ... tuần sau' hoặc 'thứ ... tuần tới' = ngày đó của TUẦN KẾ TIẾP (tuần bắt đầu Thứ Hai). Không phải lần gần nhất sắp tới.\n" +
+            "- 'tuần sau' không có thứ = cùng thứ, +7 ngày.\n" +
+            "- 'đầu tháng sau' = ngày 1 tháng kế tiếp. 'cuối tuần' = Thứ Bảy gần nhất sắp tới.\n" +
+            "- Ngày dạng số 'ngày 15', '15/8' → suy ra năm sao cho >= hôm nay khi có thể.\n" +
+            "\n" +
+            "QUY TẮC GIỜ (explicitStart / explicitEnd = 'HH:mm' 24h hoặc null):\n" +
+            "- Giờ cụ thể ('3 giờ chiều' = 15:00, '9h sáng' = 09:00, '10 giờ tối' = 22:00) → explicitStart.\n" +
+            "- Khoảng giờ ('20-23h', 'từ 9 tới 10 giờ', '14h đến 15h30') → explicitStart + explicitEnd. Trong trường hợp này KHÔNG tự đặt durationMin, giữ = 30.\n" +
+            "- 'buổi sáng' → explicitStart='09:00' (mặc định trước 11h).\n" +
+            "- 'buổi trưa' → explicitStart='12:00'.\n" +
+            "- 'buổi chiều' → explicitStart='14:00' (13–16h).\n" +
+            "- 'buổi tối' → explicitStart='19:00'.\n" +
+            "- 'sau bữa trưa' → explicitStart='13:00' (sau 12h trưa).\n" +
+            "- 'sáng sớm' → '07:00'. 'khuya' → '22:00'.\n" +
+            "- Nếu chỉ nói mốc mờ ('sáng', 'chiều', 'tối') mà không có giờ cụ thể, dùng mặc định ở trên nhưng KHÔNG đặt explicitEnd.\n" +
+            "\n" +
+            "QUY TẮC THỜI LƯỢNG (durationMin = số phút, mặc định 30):\n" +
+            "- '30 phút' = 30. 'một tiếng' / '1 tiếng' / '1 giờ' = 60. 'nửa tiếng' = 30. '90 phút' = 90. '1 tiếng rưỡi' = 90. '2 tiếng' = 120.\n" +
+            "- Nếu đã có explicitStart + explicitEnd thì giữ durationMin=30 (client sẽ tự tính lại từ start/end).\n" +
+            "\n" +
+            "Chỉ trả JSON, không giải thích. Nếu chỉ 1 việc → mảng 1 phần tử.",
         },
         { role: "user", content: data.transcript },
       ],
@@ -142,11 +176,17 @@ export const parseTasks = createServerFn({ method: "POST" })
           typeof o.explicitEnd === "string" && /^\d{1,2}:\d{2}$/.test(o.explicitEnd)
             ? o.explicitEnd
             : undefined;
+        const date =
+          typeof o.explicitDate === "string" &&
+          /^\d{4}-\d{2}-\d{2}$/.test(o.explicitDate)
+            ? o.explicitDate
+            : undefined;
         return {
           title,
           durationMin: Number.isFinite(dur) && dur > 0 ? Math.round(dur) : 30,
           explicitStart: start,
           explicitEnd: end,
+          explicitDate: date,
         };
       })
       .filter((t) => t.title.length > 0);
