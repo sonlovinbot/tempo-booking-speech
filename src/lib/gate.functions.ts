@@ -1,11 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-export async function requireUnlocked() {
-  const { requireUnlockedImpl } = await import("./gate.server");
-  await requireUnlockedImpl();
-}
-
 export const isUnlocked = createServerFn({ method: "GET" }).handler(async () => {
   const { isUnlockedImpl } = await import("./gate.server");
   return isUnlockedImpl();
