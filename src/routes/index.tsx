@@ -896,11 +896,13 @@ function DoneView({
   added,
   total,
   link,
+  meet,
   onAgain,
 }: {
   added: number;
   total: number;
   link: string | null;
+  meet: string | null;
   onAgain: () => void;
 }) {
   return (
@@ -920,6 +922,16 @@ function DoneView({
         </p>
       </div>
       <div className="flex flex-col gap-3 w-full">
+        {meet && (
+          <a
+            href={meet}
+            target="_blank"
+            rel="noreferrer"
+            className="h-12 rounded-full border border-primary/50 bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors flex items-center justify-center gap-2"
+          >
+            <Video className="h-4 w-4" /> Mở Google Meet
+          </a>
+        )}
         {link && (
           <a
             href={link}
