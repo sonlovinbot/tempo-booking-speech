@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { Toaster } from "sonner";
 
 function NotFoundComponent() {
   return (
@@ -126,6 +127,7 @@ function RootShell({ children }: { children: ReactNode }) {
       </head>
       <body className="bg-background text-foreground antialiased">
         {children}
+        <Toaster theme="dark" position="top-center" richColors />
         <Scripts />
       </body>
     </html>
