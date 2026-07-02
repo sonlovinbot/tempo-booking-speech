@@ -67,6 +67,7 @@ export type ParsedTask = {
   title: string;
   durationMin: number;
   explicitStart?: string; // "HH:mm" 24h
+  explicitEnd?: string; // "HH:mm" 24h
 };
 
 export const parseTasks = createServerFn({ method: "POST" })
@@ -91,9 +92,10 @@ export const parseTasks = createServerFn({ method: "POST" })
           content:
             "Bạn trích xuất danh sách công việc từ câu nói tiếng Việt. " +
             `Hiện tại là ${nowStr}. ` +
-            "Trả về JSON DUY NHẤT dạng {\"tasks\":[{\"title\":string, \"durationMin\":number, \"explicitStart\":string|null}]} " +
-            "trong đó explicitStart là HH:mm 24h nếu người dùng nói giờ cụ thể, ngược lại null. " +
-            "Mặc định durationMin=30. Nếu người dùng nói thời lượng (vd '1 tiếng', '15 phút') dùng giá trị đó. " +
+            "Trả về JSON DUY NHẤT dạng {\"tasks\":[{\"title\":string, \"durationMin\":number, \"explicitStart\":string|null, \"explicitEnd\":string|null}]} " +
+            "trong đó explicitStart/explicitEnd là HH:mm 24h nếu người dùng nói giờ cụ thể, ngược lại null. " +
+            "Nếu người dùng nói một khoảng giờ (vd '20-23h', 'từ 9 tới 10 giờ') thì đặt cả explicitStart và explicitEnd; KHÔNG tự suy đoán durationMin trong trường hợp này, để nó = 30. " +
+            "Nếu chỉ có giờ bắt đầu và người dùng nói thời lượng (vd '1 tiếng', '15 phút') thì đặt durationMin theo đó. Mặc định durationMin=30. " +
             "Nếu chỉ có 1 việc, mảng chứa 1 phần tử. Không thêm giải thích.",
         },
         { role: "user", content: data.transcript },
@@ -136,10 +138,15 @@ export const parseTasks = createServerFn({ method: "POST" })
           typeof o.explicitStart === "string" && /^\d{1,2}:\d{2}$/.test(o.explicitStart)
             ? o.explicitStart
             : undefined;
+        const end =
+          typeof o.explicitEnd === "string" && /^\d{1,2}:\d{2}$/.test(o.explicitEnd)
+            ? o.explicitEnd
+            : undefined;
         return {
           title,
           durationMin: Number.isFinite(dur) && dur > 0 ? Math.round(dur) : 30,
           explicitStart: start,
+          explicitEnd: end,
         };
       })
       .filter((t) => t.title.length > 0);
