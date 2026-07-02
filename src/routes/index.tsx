@@ -757,6 +757,7 @@ function ReviewView({
   onSkip,
   onApprove,
   onChange,
+  creating,
 }: {
   task: ReviewTask;
   index: number;
@@ -764,6 +765,7 @@ function ReviewView({
   onSkip: () => void;
   onApprove: () => void;
   onChange: (patch: Partial<ReviewTask>) => void;
+  creating: boolean;
 }) {
   const [editingTitle, setEditingTitle] = useState(false);
   const startHM = fmtHM(task.startISO);
