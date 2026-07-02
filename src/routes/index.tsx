@@ -13,6 +13,9 @@ import {
   Loader2,
   ArrowRight,
   Plus,
+  Bell,
+  Video,
+  FileText,
 } from "lucide-react";
 import {
   transcribeAudio,
@@ -36,6 +39,10 @@ type ReviewTask = {
   startISO: string; // computed
   endISO: string;
   explicit: boolean;
+  description: string;
+  reminderMin: number | null; // null = tắt
+  addMeet: boolean;
+  meetLink?: string | null;
 };
 
 const TZ = "Asia/Ho_Chi_Minh";
@@ -206,6 +213,7 @@ function Tempo() {
   const [index, setIndex] = useState(0);
   const [addedCount, setAddedCount] = useState(0);
   const [lastLink, setLastLink] = useState<string | null>(null);
+  const [lastMeet, setLastMeet] = useState<string | null>(null);
 
   const transcribeFn = useServerFn(transcribeAudio);
   const parseFn = useServerFn(parseTasks);
@@ -394,13 +402,23 @@ function Tempo() {
           busyList.push({ startISO, endISO });
           cursor = endISO;
         }
-        return { title: t.title, durationMin, startISO, endISO, explicit };
+        return {
+          title: t.title,
+          durationMin,
+          startISO,
+          endISO,
+          explicit,
+          description: t.description ?? "",
+          reminderMin: 30,
+          addMeet: false,
+        };
       });
 
       setTasks(review);
       setIndex(0);
       setAddedCount(0);
       setLastLink(null);
+      setLastMeet(null);
       setPhase("reviewing");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Có lỗi xảy ra";
@@ -426,17 +444,29 @@ function Tempo() {
           title: current.title,
           startISO: current.startISO,
           endISO: current.endISO,
+          description: current.description || undefined,
+          reminderMin: current.reminderMin,
+          addMeet: current.addMeet,
         },
       });
       setAddedCount((c) => c + 1);
       if (res.htmlLink) setLastLink(res.htmlLink);
+      if (res.meetLink) {
+        // Lưu meetLink vào task hiện tại để DoneView hiển thị.
+        setTasks((prev) => {
+          const copy = [...prev];
+          copy[index] = { ...copy[index], meetLink: res.meetLink };
+          return copy;
+        });
+        setLastMeet(res.meetLink);
+      }
       nextOrDone();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Không thêm được vào Calendar";
       setError(msg);
       setPhase("error");
     }
-  }, [current, createFn, nextOrDone]);
+  }, [current, createFn, nextOrDone, index]);
 
   const updateCurrent = (patch: Partial<ReviewTask>) => {
     setTasks((prev) => {
@@ -468,6 +498,7 @@ function Tempo() {
     setElapsed(0);
     setAddedCount(0);
     setLastLink(null);
+    setLastMeet(null);
   };
 
   return (
@@ -508,6 +539,7 @@ function Tempo() {
                   added={addedCount}
                   total={tasks.length}
                   link={lastLink}
+                  meet={lastMeet}
                   onAgain={reset}
                 />
               )}
@@ -817,6 +849,51 @@ function ReviewView({
               {durLabel}
             </span>
           </Row>
+          <Row icon={<Bell className="h-4 w-4" />} label="Nhắc hẹn">
+            <select
+              value={task.reminderMin === null ? "off" : String(task.reminderMin)}
+              onChange={(e) => {
+                const v = e.target.value;
+                onChange({ reminderMin: v === "off" ? null : Number(v) });
+              }}
+              className="bg-input border border-border rounded-full px-3 py-1 text-sm outline-none focus:border-primary/60 cursor-pointer"
+            >
+              <option value="off">Tắt</option>
+              <option value="5">5 phút trước</option>
+              <option value="10">10 phút trước</option>
+              <option value="15">15 phút trước</option>
+              <option value="30">30 phút trước</option>
+              <option value="60">1 giờ trước</option>
+            </select>
+          </Row>
+          <Row icon={<Video className="h-4 w-4" />} label="Google Meet">
+            <button
+              type="button"
+              onClick={() => onChange({ addMeet: !task.addMeet })}
+              className={`h-7 px-3 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                task.addMeet
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-muted-foreground hover:text-foreground"
+              }`}
+              aria-pressed={task.addMeet}
+            >
+              {task.addMeet ? "Tạo link" : "Không tạo"}
+            </button>
+          </Row>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-muted-foreground text-sm">
+            <FileText className="h-4 w-4" />
+            <span>Mô tả</span>
+          </div>
+          <textarea
+            value={task.description}
+            onChange={(e) => onChange({ description: e.target.value })}
+            placeholder="Thêm ghi chú, địa điểm, người tham gia…"
+            rows={3}
+            className="w-full bg-input border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary/60 resize-none placeholder:text-muted-foreground/60"
+          />
         </div>
       </div>
 
@@ -864,11 +941,13 @@ function DoneView({
   added,
   total,
   link,
+  meet,
   onAgain,
 }: {
   added: number;
   total: number;
   link: string | null;
+  meet: string | null;
   onAgain: () => void;
 }) {
   return (
@@ -888,6 +967,16 @@ function DoneView({
         </p>
       </div>
       <div className="flex flex-col gap-3 w-full">
+        {meet && (
+          <a
+            href={meet}
+            target="_blank"
+            rel="noreferrer"
+            className="h-12 rounded-full border border-primary/50 bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors flex items-center justify-center gap-2"
+          >
+            <Video className="h-4 w-4" /> Mở Google Meet
+          </a>
+        )}
         {link && (
           <a
             href={link}

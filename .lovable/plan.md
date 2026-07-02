@@ -1,74 +1,54 @@
+## Mục tiêu
 
-# Tempo — Voice-to-Calendar (mobile web app)
+Thêm 3 tùy chọn cho mỗi task ở màn hình Review, và đồng bộ chúng vào Google Calendar khi bấm "Thêm vào Calendar":
 
-Một web app dạng mobile (khung dọc, tối giản, dark mode, accent Brand Purple `#a855f7`) cho phép nhấn 1 nút để nói bằng tiếng Việt, AI parse ra danh sách task, duyệt từng task, rồi thêm vào Google Calendar của bạn.
+1. **Nhắc hẹn** (`reminderMin`) — mặc định 30 phút trước, cho phép chọn: Tắt / 5 / 10 / 15 / 30 / 60 phút.
+2. **Mô tả** (`description`) — ô textarea, tự động điền từ transcript nếu AI trích được.
+3. **Google Meet** (`addMeet`) — công tắc bật/tắt, mặc định TẮT. Khi bật, event tạo kèm link Meet và hiển thị link đó ở màn Done.
 
-## Design system (dark + Brand Purple)
+## Thay đổi
 
-Áp dụng DESIGN-minimax.md đảo sang dark:
-- Canvas: `#0a0a0a` (near-black), surface `#141416`, elevated `#1c1c1f`, hairline `#2a2a2e`
-- Text: `#ffffff` primary, `#a8aab2` muted
-- Accent duy nhất: Brand Purple `#a855f7` (nút record, focus ring, progress, tick xác nhận)
-- Typography: DM Sans toàn bộ, hero 40–56px với letter-spacing âm, body 16px
-- Nút chính: pill bo tròn đầy, giữ ngôn ngữ "black pill" nhưng đổi sang purple pill cho primary trên nền tối
-- Radius lớn (rounded-2xl/3xl), spacing rộng rãi, motion mượt (framer-motion transitions ~200–300ms)
+### 1. `src/lib/tempo.functions.ts`
 
-## Flow
+- Mở rộng `ParsedTask` + prompt Gemini để trích thêm `description` (tối đa ~200 ký tự, null nếu người dùng không nói gì thêm ngoài tiêu đề). Không đưa reminder / meet vào AI — người dùng chỉnh trực tiếp trong UI.
+- `createEvent` nhận thêm:
+  - `description?: string`
+  - `reminderMin?: number | null` (null = tắt, không thêm reminder override)
+  - `addMeet?: boolean`
+- Trong body gửi Google Calendar:
+  - `description` khi có.
+  - `reminders: { useDefault: false, overrides: [{ method: "popup", minutes }] }` khi `reminderMin != null`; nếu tắt thì `reminders: { useDefault: false, overrides: [] }`.
+  - Khi `addMeet=true`: thêm `conferenceData: { createRequest: { requestId: <uuid>, conferenceSolutionKey: { type: "hangoutsMeet" } } }` và gọi endpoint với query `?conferenceDataVersion=1`.
+- Trả về thêm `meetLink: string | null` (đọc từ `conferenceData.entryPoints[].uri` với type `video`, fallback `hangoutLink`).
 
-```text
-┌ Home ────────────┐   ┌ Processing ─┐   ┌ Review ─────────┐   ┌ Done ──────┐
-│  logo Tempo      │   │ waveform +   │   │ Card 1/N        │   │ ✓ Đã thêm  │
-│                  │─▶ │ "đang nghe…" │─▶ │ title / giờ /   │─▶ │  N task    │
-│    ⬤ record      │   │ rồi          │   │ độ dài, edit    │   │ Xem lịch → │
-│  "Bấm để nói"    │   │ "đang parse" │   │ [Bỏ qua][Thêm]  │   │ Ghi tiếp   │
-└──────────────────┘   └──────────────┘   └─────────────────┘   └────────────┘
-```
+### 2. `src/routes/index.tsx`
 
-1. **Home**: nút record tròn lớn ở giữa (purple với glow nhẹ), tap 1 lần bắt đầu, tap lại dừng. Waveform animation khi đang ghi. Timer đếm giây phía dưới.
-2. **Processing**: gửi audio (WAV, capture bằng Web Audio API — không dùng MediaRecorder chunks) tới server function → STT (`openai/gpt-4o-mini-transcribe`) → parse task (Gemini `google/gemini-3-flash-preview`, JSON schema: `[{title, durationMin, explicitTime?}]`). Hiển thị 2 trạng thái: "Đang nghe" → "Đang phân tích".
-3. **Review — duyệt từng task**: card lớn hiện task, giờ bắt đầu (đã tính slot trống kế tiếp trong Google Calendar hôm nay), độ dài (mặc định 30 phút, override nếu user nói khác). Inline edit tiêu đề/giờ/độ dài. Hai nút: "Bỏ qua" (outline) và "Thêm vào Calendar" (purple pill). Progress dot 1/N ở trên.
-4. **Done**: xác nhận N task đã thêm, có link mở Google Calendar và nút "Ghi tiếp".
+- `ReviewTask` type thêm: `description: string`, `reminderMin: number | null` (mặc định 30), `addMeet: boolean` (mặc định false).
+- Khi build danh sách review từ `parsed`, gán mặc định trên và lấy `description` từ AI nếu có.
+- `ReviewView`:
+  - Thêm khối "Mô tả": ô textarea 3 dòng, placeholder "Thêm ghi chú…", `bg-input rounded-xl`.
+  - Thêm hàng "Nhắc hẹn": `<select>` styled pill dark, options: Tắt / 5 phút / 10 phút / 15 phút / 30 phút / 1 giờ trước.
+  - Thêm hàng "Google Meet": nút toggle nhỏ (dùng `Switch` từ shadcn hoặc button pill tự vẽ) + icon video, hiện chữ "Tạo link Meet".
+- `approve()` truyền các field mới xuống `createEvent`; nếu server trả `meetLink`, lưu vào state task và hiển thị link ở `DoneView` (nút "Mở Google Meet" tách riêng với nút "Xem trên Google Calendar").
+- `DoneView`: nếu có meetLink của event cuối, render thêm nút link Meet.
 
-## Slot allocation (hôm nay)
+### 3. UI/UX chi tiết
 
-- Sau khi parse xong, gọi Google Calendar `events.list` cho `primary` từ `now` đến `23:59` hôm nay (timezone Asia/Ho_Chi_Minh).
-- Với mỗi task, tìm khoảng trống liên tiếp ≥ `durationMin` bắt đầu từ `max(now, cursor)`. Sau khi user approve một task, cursor nhảy tới `end` của task đó (để task tiếp theo tự né).
-- Nếu user nói giờ cụ thể ("3h chiều", "lúc 10h"), dùng giờ đó bất kể xung đột — chỉ cảnh báo nhẹ nếu trùng.
+- Giữ layout hiện tại (card dark, purple accent). Ba khối mới nằm dưới hàng "Thời lượng", cách nhau `space-y-3`.
+- Nhắc hẹn dùng `<select>` native styled: `bg-input border border-border rounded-full px-3 py-1 text-sm`.
+- Meet toggle: pill có icon `Video` + label, active = `bg-primary text-primary-foreground`, inactive = `bg-secondary text-muted-foreground`. Không dùng shadcn Switch để tránh phụ thuộc thêm.
+- Mô tả: textarea `min-h-20 max-h-40 resize-none`.
+- Motion: các khối mới fade-in cùng card, không thêm animation riêng.
 
-## Google Calendar — hard-code tài khoản của bạn
+## Ngoài phạm vi
 
-Dùng Google Calendar connector (gateway-enabled). Connector này authenticate 1 tài khoản duy nhất ở cấp workspace — chính là điều bạn muốn: "hard-code tài khoản Google của tôi".
-- Kết nối 1 lần qua Connectors → Google Calendar.
-- Server function gọi `https://connector-gateway.lovable.dev/google_calendar/calendar/v3/calendars/primary/events` với 2 header: `Authorization: Bearer ${LOVABLE_API_KEY}` và `X-Connection-Api-Key: ${GOOGLE_CALENDAR_API_KEY}`.
-- Không có màn "Sign in with Google" trong app.
+- Chỉnh sửa reminder/meet sau khi đã tạo event.
+- Nhiều reminder cùng lúc, reminder email.
+- Attendees / mời khách vào Meet.
+- Lưu preferences (reminder mặc định) giữa các phiên.
 
-## Technical details
+## Rủi ro & lưu ý
 
-**Stack**: TanStack Start hiện tại, không cần Lovable Cloud (không auth, không DB).
-
-**Routes**:
-- `src/routes/index.tsx` — toàn bộ flow trong 1 route, dùng state machine (`idle | recording | processing | reviewing | done`).
-
-**Server functions** (`src/lib/*.functions.ts`):
-- `transcribeAudio({ audioBase64, mime })` — POST tới Lovable AI `/v1/audio/transcriptions` với `openai/gpt-4o-mini-transcribe`, trả về `{ text }`.
-- `parseTasks({ transcript })` — gọi Gemini với structured output, trả về `Task[] = { title, durationMin, explicitStart?: "HH:mm" }`.
-- `listTodayEvents()` — gọi gateway `events.list`, trả về busy blocks còn lại trong ngày.
-- `createEvent({ title, startISO, endISO })` — gateway `events.insert`, timezone `Asia/Ho_Chi_Minh`.
-
-**Client**:
-- Capture bằng Web Audio API + AudioContext (16 kHz mono WAV) — theo hướng dẫn ai-speech-to-text, tránh MediaRecorder timeslice và mp4 fragmented trên iOS Safari.
-- Framer-motion cho transitions giữa các state.
-- `lucide-react` icons: `Mic`, `Square`, `Check`, `X`, `Calendar`, `Clock`, `Pencil`.
-
-**Design tokens**: cập nhật `src/styles.css` với palette dark + DM Sans, dùng `@theme inline`. Load DM Sans qua `<link>` trong `__root.tsx` (không `@import` URL trong CSS).
-
-**Metadata**: set title "Tempo — Voice tasks to Calendar", description tiếng Việt trong `__root.tsx`.
-
-## Setup bạn cần làm 1 lần
-
-1. Cho phép link Google Calendar connector (mình sẽ nhắc trong lúc build).
-2. Không cần gì thêm — `LOVABLE_API_KEY` đã có sẵn.
-
-## Out of scope (phiên bản này)
-
-- Multi-account Google, sign-in flow, lịch không phải hôm nay, recurring events, reminders/notifications, offline mode, lưu lịch sử recordings.
+- Google Calendar yêu cầu `conferenceDataVersion=1` trong query param mới tạo được Meet — nếu quên, event tạo thành công nhưng không có link.
+- `requestId` cho `createRequest` phải unique mỗi lần tạo → dùng `crypto.randomUUID()` server-side.
+- Nếu tài khoản Google Workspace bị giới hạn quyền tạo Meet, response vẫn 200 nhưng `conferenceData` có `status.statusCode = "failure"` → surface warning nhẹ ở Done ("Không tạo được Meet") thay vì crash.
