@@ -401,7 +401,16 @@ function Tempo() {
           busyList.push({ startISO, endISO });
           cursor = endISO;
         }
-        return { title: t.title, durationMin, startISO, endISO, explicit };
+        return {
+          title: t.title,
+          durationMin,
+          startISO,
+          endISO,
+          explicit,
+          description: t.description ?? "",
+          reminderMin: 30,
+          addMeet: false,
+        };
       });
 
       setTasks(review);
@@ -433,17 +442,29 @@ function Tempo() {
           title: current.title,
           startISO: current.startISO,
           endISO: current.endISO,
+          description: current.description || undefined,
+          reminderMin: current.reminderMin,
+          addMeet: current.addMeet,
         },
       });
       setAddedCount((c) => c + 1);
       if (res.htmlLink) setLastLink(res.htmlLink);
+      if (res.meetLink) {
+        // Lưu meetLink vào task hiện tại để DoneView hiển thị.
+        setTasks((prev) => {
+          const copy = [...prev];
+          copy[index] = { ...copy[index], meetLink: res.meetLink };
+          return copy;
+        });
+        setLastMeet(res.meetLink);
+      }
       nextOrDone();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Không thêm được vào Calendar";
       setError(msg);
       setPhase("error");
     }
-  }, [current, createFn, nextOrDone]);
+  }, [current, createFn, nextOrDone, index]);
 
   const updateCurrent = (patch: Partial<ReviewTask>) => {
     setTasks((prev) => {
