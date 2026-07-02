@@ -63,29 +63,31 @@
 
 :root {
   --radius: 0.625rem;
-  /* Tempo dark palette (MiniMax inspired, brand-purple accent) */
-  --background: oklch(0.145 0 0);
+  /* Tempo dark palette — MiniMax (dark inversion) with Brand Purple #a855f7 accent.
+     Canvas #0a0a0a, surface #141416, elevated #1c1c1f, hairline #2a2a2e,
+     text #ffffff / muted #a8aab2. */
+  --background: oklch(0.09 0 0);
   --foreground: oklch(1 0 0);
-  --card: oklch(0.19 0 0);
+  --card: oklch(0.155 0 0);
   --card-foreground: oklch(1 0 0);
-  --popover: oklch(0.19 0 0);
+  --popover: oklch(0.155 0 0);
   --popover-foreground: oklch(1 0 0);
-  --primary: oklch(0.62 0.22 300);
+  --primary: oklch(0.66 0.24 305);            /* #a855f7 brand-purple */
   --primary-foreground: oklch(1 0 0);
-  --primary-glow: oklch(0.72 0.24 300);
-  --secondary: oklch(0.24 0 0);
+  --primary-glow: oklch(0.76 0.22 305);
+  --secondary: oklch(0.19 0 0);
   --secondary-foreground: oklch(1 0 0);
-  --muted: oklch(0.22 0 0);
-  --muted-foreground: oklch(0.68 0.01 260);
-  --accent: oklch(0.62 0.22 300);
+  --muted: oklch(0.17 0 0);
+  --muted-foreground: oklch(0.72 0.01 260);   /* #a8aab2 */
+  --accent: oklch(0.66 0.24 305);
   --accent-foreground: oklch(1 0 0);
   --destructive: oklch(0.65 0.22 25);
   --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.28 0 0);
-  --input: oklch(0.24 0 0);
-  --ring: oklch(0.62 0.22 300);
-  --surface-elevated: oklch(0.22 0 0);
-  --hairline: oklch(0.28 0 0);
+  --border: oklch(0.24 0 0);                  /* #2a2a2e hairline */
+  --input: oklch(0.19 0 0);
+  --ring: oklch(0.66 0.24 305);
+  --surface-elevated: oklch(0.19 0 0);
+  --hairline: oklch(0.24 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -166,8 +168,44 @@
 }
 
 @utility text-hero {
-  font-size: clamp(40px, 10vw, 56px);
-  line-height: 1.05;
+  font-size: clamp(44px, 13vw, 80px);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+  font-weight: 600;
+}
+
+@utility text-display {
+  font-size: clamp(32px, 7vw, 56px);
+  line-height: 1.1;
   letter-spacing: -0.03em;
   font-weight: 600;
+}
+
+/* Homepage animations */
+@keyframes tempo-float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-12px) scale(1.03); }
+}
+@keyframes tempo-ring {
+  0% { transform: scale(0.9); opacity: 0.7; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+@keyframes tempo-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes tempo-orb {
+  0%, 100% { transform: translate3d(0,0,0) scale(1); }
+  33% { transform: translate3d(20px,-30px,0) scale(1.15); }
+  66% { transform: translate3d(-25px,20px,0) scale(0.9); }
+}
+
+@utility animate-float {
+  animation: tempo-float 6s ease-in-out infinite;
+}
+@utility animate-ring {
+  animation: tempo-ring 2.4s ease-out infinite;
+}
+@utility animate-orb {
+  animation: tempo-orb 14s ease-in-out infinite;
 }

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   Mic,
   Square,
@@ -433,38 +434,46 @@ function Tempo() {
         <Header />
 
         <div className="flex-1 flex flex-col justify-center">
-          {phase === "idle" && (
-            <IdleView onStart={startRecording} />
-          )}
-          {phase === "recording" && (
-            <RecordingView
-              elapsed={elapsed}
-              levels={levels}
-              onStop={stopAndSubmit}
-            />
-          )}
-          {phase === "processing" && <ProcessingView step={processStep} />}
-          {phase === "reviewing" && current && (
-            <ReviewView
-              task={current}
-              index={index}
-              total={tasks.length}
-              onSkip={skip}
-              onApprove={approve}
-              onChange={updateCurrent}
-            />
-          )}
-          {phase === "done" && (
-            <DoneView
-              added={addedCount}
-              total={tasks.length}
-              link={lastLink}
-              onAgain={reset}
-            />
-          )}
-          {phase === "error" && (
-            <ErrorView message={error ?? "Có lỗi"} onRetry={reset} />
-          )}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={phase}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.28, ease: "easeOut" }}
+            >
+              {phase === "idle" && <IdleView onStart={startRecording} />}
+              {phase === "recording" && (
+                <RecordingView
+                  elapsed={elapsed}
+                  levels={levels}
+                  onStop={stopAndSubmit}
+                />
+              )}
+              {phase === "processing" && <ProcessingView step={processStep} />}
+              {phase === "reviewing" && current && (
+                <ReviewView
+                  task={current}
+                  index={index}
+                  total={tasks.length}
+                  onSkip={skip}
+                  onApprove={approve}
+                  onChange={updateCurrent}
+                />
+              )}
+              {phase === "done" && (
+                <DoneView
+                  added={addedCount}
+                  total={tasks.length}
+                  link={lastLink}
+                  onAgain={reset}
+                />
+              )}
+              {phase === "error" && (
+                <ErrorView message={error ?? "Có lỗi"} onRetry={reset} />
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
 
         <Footer />
@@ -500,9 +509,31 @@ function Footer() {
 // ---------- Views ----------
 
 function IdleView({ onStart }: { onStart: () => void }) {
+  const stagger = {
+    hidden: { opacity: 0 },
+    show: { opacity: 1, transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
+  };
+  const item = {
+    hidden: { opacity: 0, y: 16 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
+  };
   return (
-    <div className="flex flex-col items-center text-center gap-10">
-      <div className="space-y-3">
+    <motion.div
+      className="relative flex flex-col items-center text-center gap-10"
+      variants={stagger}
+      initial="hidden"
+      animate="show"
+    >
+      {/* Ambient purple orbs */}
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <span className="absolute -top-16 -left-16 h-56 w-56 rounded-full bg-primary/25 blur-3xl animate-orb" />
+        <span
+          className="absolute -bottom-24 -right-10 h-64 w-64 rounded-full bg-primary/15 blur-3xl animate-orb"
+          style={{ animationDelay: "-6s" }}
+        />
+      </div>
+
+      <motion.div variants={item} className="space-y-3">
         <h1 className="text-hero">
           Nói ra,<br />
           <span className="text-primary">Tempo</span> sắp xếp.
@@ -511,22 +542,31 @@ function IdleView({ onStart }: { onStart: () => void }) {
           Bấm và nói việc bạn cần làm hôm nay. Tempo sẽ thêm chúng vào Google
           Calendar giúp bạn.
         </p>
-      </div>
+      </motion.div>
 
-      <button
+      <motion.button
+        variants={item}
         type="button"
         onClick={onStart}
-        className="group relative h-40 w-40 rounded-full bg-primary text-primary-foreground purple-glow transition-transform active:scale-95 hover:scale-[1.02]"
+        whileHover={{ scale: 1.03 }}
+        whileTap={{ scale: 0.94 }}
+        className="group relative h-40 w-40 rounded-full bg-primary text-primary-foreground purple-glow"
         aria-label="Bắt đầu ghi âm"
       >
+        {/* pulsing rings */}
+        <span className="absolute inset-0 rounded-full border border-primary/50 animate-ring" />
+        <span
+          className="absolute inset-0 rounded-full border border-primary/40 animate-ring"
+          style={{ animationDelay: "-1.2s" }}
+        />
         <span className="absolute inset-0 rounded-full bg-primary/40 blur-2xl -z-10 animate-pulse" />
-        <Mic className="mx-auto h-14 w-14" strokeWidth={1.6} />
-      </button>
+        <Mic className="mx-auto h-14 w-14 relative" strokeWidth={1.6} />
+      </motion.button>
 
-      <div className="text-xs text-muted-foreground">
+      <motion.div variants={item} className="text-xs text-muted-foreground">
         Bấm 1 lần để bắt đầu, bấm lại để dừng
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
