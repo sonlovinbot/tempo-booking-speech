@@ -315,21 +315,26 @@ function Tempo() {
       }
 
       setProcessStep("planning");
-      const dateStr = saigonTodayDateStr();
-      const dayEndISO = new Date(`${dateStr}T23:59:00+07:00`).toISOString();
+      const today = saigonTodayDateStr();
       const nowISO = new Date().toISOString();
       const busyList = [...busy];
       let cursor = nowISO;
 
       const review: ReviewTask[] = parsed.map((t: ParsedTask) => {
+        const dateStr = t.explicitDate ?? today;
+        const isToday = dateStr === today;
+        const dayEndISO = new Date(`${dateStr}T23:59:00+07:00`).toISOString();
         let startISO: string;
         let explicit = false;
         let durationMin = t.durationMin;
         if (t.explicitStart) {
           startISO = isoFromSaigonHM(dateStr, t.explicitStart);
           explicit = true;
-        } else {
+        } else if (isToday) {
           startISO = findSlot(busyList, cursor, durationMin, dayEndISO);
+        } else {
+          // Ngày khác: không có busy list → mặc định 09:00 ngày đó.
+          startISO = isoFromSaigonHM(dateStr, "09:00");
         }
         let endISO: string;
         if (t.explicitEnd) {
@@ -349,9 +354,11 @@ function Tempo() {
             new Date(startISO).getTime() + durationMin * 60_000,
           ).toISOString();
         }
-        // Reserve so subsequent tasks don't overlap
-        busyList.push({ startISO, endISO });
-        cursor = endISO;
+        // Reserve so subsequent auto-scheduled tasks (cùng ngày hôm nay) không chồng
+        if (isToday) {
+          busyList.push({ startISO, endISO });
+          cursor = endISO;
+        }
         return { title: t.title, durationMin, startISO, endISO, explicit };
       });
 
