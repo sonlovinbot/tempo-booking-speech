@@ -849,6 +849,51 @@ function ReviewView({
               {durLabel}
             </span>
           </Row>
+          <Row icon={<Bell className="h-4 w-4" />} label="Nhắc hẹn">
+            <select
+              value={task.reminderMin === null ? "off" : String(task.reminderMin)}
+              onChange={(e) => {
+                const v = e.target.value;
+                onChange({ reminderMin: v === "off" ? null : Number(v) });
+              }}
+              className="bg-input border border-border rounded-full px-3 py-1 text-sm outline-none focus:border-primary/60 cursor-pointer"
+            >
+              <option value="off">Tắt</option>
+              <option value="5">5 phút trước</option>
+              <option value="10">10 phút trước</option>
+              <option value="15">15 phút trước</option>
+              <option value="30">30 phút trước</option>
+              <option value="60">1 giờ trước</option>
+            </select>
+          </Row>
+          <Row icon={<Video className="h-4 w-4" />} label="Google Meet">
+            <button
+              type="button"
+              onClick={() => onChange({ addMeet: !task.addMeet })}
+              className={`h-7 px-3 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                task.addMeet
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-muted-foreground hover:text-foreground"
+              }`}
+              aria-pressed={task.addMeet}
+            >
+              {task.addMeet ? "Tạo link" : "Không tạo"}
+            </button>
+          </Row>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-muted-foreground text-sm">
+            <FileText className="h-4 w-4" />
+            <span>Mô tả</span>
+          </div>
+          <textarea
+            value={task.description}
+            onChange={(e) => onChange({ description: e.target.value })}
+            placeholder="Thêm ghi chú, địa điểm, người tham gia…"
+            rows={3}
+            className="w-full bg-input border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary/60 resize-none placeholder:text-muted-foreground/60"
+          />
         </div>
       </div>
 
