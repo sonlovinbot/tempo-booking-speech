@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireUnlocked } from "./gate.functions";
+
 
 const AI_BASE = "https://ai.gateway.lovable.dev/v1";
 const GCAL_BASE =
@@ -31,7 +31,7 @@ const TranscribeInput = z.object({
 export const transcribeAudio = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => TranscribeInput.parse(d))
   .handler(async ({ data }) => {
-    await requireUnlocked();
+    await (await import("./gate.server")).requireUnlockedImpl();
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("LOVABLE_API_KEY chưa được cấu hình");
 
@@ -78,7 +78,7 @@ export type ParsedTask = {
 export const parseTasks = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => ParseInput.parse(d))
   .handler(async ({ data }): Promise<{ tasks: ParsedTask[] }> => {
-    await requireUnlocked();
+    await (await import("./gate.server")).requireUnlockedImpl();
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("LOVABLE_API_KEY chưa được cấu hình");
 
@@ -232,7 +232,7 @@ function todayBoundsISO() {
 
 export const listTodayEvents = createServerFn({ method: "GET" }).handler(
   async () => {
-    await requireUnlocked();
+    await (await import("./gate.server")).requireUnlockedImpl();
     const { startISO, endISO } = todayBoundsISO();
     const url = new URL(`${GCAL_BASE}/calendars/primary/events`);
     url.searchParams.set("timeMin", startISO);
@@ -279,7 +279,7 @@ const CreateInput = z.object({
 export const createEvent = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => CreateInput.parse(d))
   .handler(async ({ data }) => {
-    await requireUnlocked();
+    await (await import("./gate.server")).requireUnlockedImpl();
     const body: Record<string, unknown> = {
       summary: data.title,
       start: { dateTime: data.startISO, timeZone: TZ },
