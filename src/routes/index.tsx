@@ -213,6 +213,7 @@ function Tempo() {
   const [index, setIndex] = useState(0);
   const [addedCount, setAddedCount] = useState(0);
   const [lastLink, setLastLink] = useState<string | null>(null);
+  const [lastMeet, setLastMeet] = useState<string | null>(null);
 
   const transcribeFn = useServerFn(transcribeAudio);
   const parseFn = useServerFn(parseTasks);
@@ -417,6 +418,7 @@ function Tempo() {
       setIndex(0);
       setAddedCount(0);
       setLastLink(null);
+      setLastMeet(null);
       setPhase("reviewing");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Có lỗi xảy ra";
@@ -496,6 +498,7 @@ function Tempo() {
     setElapsed(0);
     setAddedCount(0);
     setLastLink(null);
+    setLastMeet(null);
   };
 
   return (
