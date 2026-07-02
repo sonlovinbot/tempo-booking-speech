@@ -94,6 +94,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "theme-color", content: "#0a0a0a" },
+      { name: "twitter:title", content: "Tempo — Ghi lịch bằng giọng nói" },
+      { name: "description", content: "Tempo is a mobile web app that records voice notes and adds them as tasks to your Google Calendar." },
+      { property: "og:description", content: "Tempo is a mobile web app that records voice notes and adds them as tasks to your Google Calendar." },
+      { name: "twitter:description", content: "Tempo is a mobile web app that records voice notes and adds them as tasks to your Google Calendar." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/8dee85ca-ffc6-4374-8543-3d57a26270f2/id-preview-db747b7f--ce62244b-05f1-40dd-8a96-3b8a7ff022f8.lovable.app-1783014294738.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/8dee85ca-ffc6-4374-8543-3d57a26270f2/id-preview-db747b7f--ce62244b-05f1-40dd-8a96-3b8a7ff022f8.lovable.app-1783014294738.png" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
