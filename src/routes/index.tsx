@@ -13,6 +13,9 @@ import {
   Loader2,
   ArrowRight,
   Plus,
+  Bell,
+  Video,
+  FileText,
 } from "lucide-react";
 import {
   transcribeAudio,
@@ -36,6 +39,10 @@ type ReviewTask = {
   startISO: string; // computed
   endISO: string;
   explicit: boolean;
+  description: string;
+  reminderMin: number | null; // null = tắt
+  addMeet: boolean;
+  meetLink?: string | null;
 };
 
 const TZ = "Asia/Ho_Chi_Minh";
