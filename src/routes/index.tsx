@@ -440,7 +440,7 @@ function Tempo() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.28, ease: [0.2, 0.8, 0.2, 1] }}
+              transition={{ duration: 0.28, ease: "easeOut" }}
             >
               {phase === "idle" && <IdleView onStart={startRecording} />}
               {phase === "recording" && (
@@ -515,7 +515,7 @@ function IdleView({ onStart }: { onStart: () => void }) {
   };
   const item = {
     hidden: { opacity: 0, y: 16 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.2, 0.8, 0.2, 1] } },
+    show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
   };
   return (
     <motion.div
