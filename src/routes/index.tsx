@@ -640,10 +640,15 @@ function ReviewView({
   onChange: (patch: Partial<ReviewTask>) => void;
 }) {
   const [editingTitle, setEditingTitle] = useState(false);
-  const [editingTime, setEditingTime] = useState(false);
-
-  const timeLabel = `${fmtHM(task.startISO)} → ${fmtHM(task.endISO)}`;
   const startHM = fmtHM(task.startISO);
+  const endHM = fmtHM(task.endISO);
+
+  const durLabel = (() => {
+    const m = task.durationMin;
+    if (m >= 60 && m % 60 === 0) return `${m / 60} giờ`;
+    if (m > 60) return `${Math.floor(m / 60)} giờ ${m % 60} phút`;
+    return `${m} phút`;
+  })();
 
   return (
     <div className="flex flex-col gap-6">
@@ -694,45 +699,36 @@ function ReviewView({
 
         <div className="space-y-3">
           <Row icon={<Clock className="h-4 w-4" />} label="Thời gian">
-            {editingTime ? (
-              <div className="flex items-center gap-2">
-                <input
-                  type="time"
-                  className="bg-input rounded-lg px-2 py-1 text-sm outline-none border border-border"
-                  defaultValue={startHM}
-                  onChange={(e) => {
-                    const dateStr = saigonTodayDateStr();
-                    onChange({
-                      startISO: isoFromSaigonHM(dateStr, e.target.value),
-                    });
-                  }}
-                  onBlur={() => setEditingTime(false)}
-                />
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setEditingTime(true)}
-                className="text-sm tabular-nums hover:text-primary"
-              >
-                {timeLabel}
-              </button>
-            )}
+            <div className="flex items-center gap-1.5">
+              <input
+                type="time"
+                className="bg-input rounded-lg px-2 py-1 text-sm outline-none border border-border tabular-nums"
+                value={startHM}
+                onChange={(e) => {
+                  const dateStr = saigonTodayDateStr();
+                  onChange({
+                    startISO: isoFromSaigonHM(dateStr, e.target.value),
+                  });
+                }}
+              />
+              <span className="text-muted-foreground text-sm">→</span>
+              <input
+                type="time"
+                className="bg-input rounded-lg px-2 py-1 text-sm outline-none border border-border tabular-nums"
+                value={endHM}
+                onChange={(e) => {
+                  const dateStr = saigonTodayDateStr();
+                  onChange({
+                    endISO: isoFromSaigonHM(dateStr, e.target.value),
+                  });
+                }}
+              />
+            </div>
           </Row>
           <Row icon={<CalIcon className="h-4 w-4" />} label="Thời lượng">
-            <select
-              className="bg-input rounded-lg px-2 py-1 text-sm outline-none border border-border"
-              value={task.durationMin}
-              onChange={(e) =>
-                onChange({ durationMin: Number(e.target.value) })
-              }
-            >
-              {[15, 30, 45, 60, 90, 120].map((m) => (
-                <option key={m} value={m}>
-                  {m} phút
-                </option>
-              ))}
-            </select>
+            <span className="text-sm tabular-nums text-muted-foreground">
+              {durLabel}
+            </span>
           </Row>
         </div>
       </div>
