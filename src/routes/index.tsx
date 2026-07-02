@@ -539,6 +539,7 @@ function Tempo() {
                   added={addedCount}
                   total={tasks.length}
                   link={lastLink}
+                  meet={lastMeet}
                   onAgain={reset}
                 />
               )}
