@@ -477,8 +477,8 @@ function Header() {
   return (
     <header className="flex items-center justify-between">
       <div className="flex items-center gap-2">
-        <div className="h-8 w-8 rounded-xl bg-accent/15 border border-accent/30 flex items-center justify-center">
-          <span className="text-accent font-semibold text-sm tracking-tight">
+        <div className="h-8 w-8 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center">
+          <span className="text-primary font-semibold text-sm tracking-tight">
             T
           </span>
         </div>
@@ -505,7 +505,7 @@ function IdleView({ onStart }: { onStart: () => void }) {
       <div className="space-y-3">
         <h1 className="text-hero">
           Nói ra,<br />
-          <span className="text-accent">Tempo</span> sắp xếp.
+          <span className="text-primary">Tempo</span> sắp xếp.
         </h1>
         <p className="text-muted-foreground text-[15px] leading-relaxed max-w-[300px] mx-auto">
           Bấm và nói việc bạn cần làm hôm nay. Tempo sẽ thêm chúng vào Google
@@ -519,7 +519,7 @@ function IdleView({ onStart }: { onStart: () => void }) {
         className="group relative h-40 w-40 rounded-full bg-primary text-primary-foreground purple-glow transition-transform active:scale-95 hover:scale-[1.02]"
         aria-label="Bắt đầu ghi âm"
       >
-        <span className="absolute inset-0 rounded-full bg-accent/40 blur-2xl -z-10 animate-pulse" />
+        <span className="absolute inset-0 rounded-full bg-primary/40 blur-2xl -z-10 animate-pulse" />
         <Mic className="mx-auto h-14 w-14" strokeWidth={1.6} />
       </button>
 
@@ -544,8 +544,8 @@ function RecordingView({
   return (
     <div className="flex flex-col items-center text-center gap-10">
       <div className="space-y-2">
-        <div className="inline-flex items-center gap-2 text-xs text-accent">
-          <span className="h-2 w-2 rounded-full bg-accent animate-pulse" />
+        <div className="inline-flex items-center gap-2 text-xs text-primary">
+          <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
           Đang nghe
         </div>
         <div className="text-4xl font-semibold tabular-nums tracking-tight">
@@ -557,7 +557,7 @@ function RecordingView({
         {levels.map((l, i) => (
           <span
             key={i}
-            className="w-[6px] rounded-full bg-accent/80 transition-[height] duration-75"
+            className="w-[6px] rounded-full bg-primary/80 transition-[height] duration-75"
             style={{ height: `${Math.max(8, l * 96)}px` }}
           />
         ))}
@@ -590,9 +590,9 @@ function ProcessingView({
   return (
     <div className="flex flex-col items-center text-center gap-8">
       <div className="relative h-24 w-24">
-        <span className="absolute inset-0 rounded-full bg-accent/25 blur-2xl animate-pulse" />
-        <div className="relative h-full w-full rounded-full bg-card border border-accent/40 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 text-accent animate-spin" strokeWidth={1.8} />
+        <span className="absolute inset-0 rounded-full bg-primary/25 blur-2xl animate-pulse" />
+        <div className="relative h-full w-full rounded-full bg-card border border-primary/40 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 text-primary animate-spin" strokeWidth={1.8} />
         </div>
       </div>
       <div className="space-y-1">
@@ -616,7 +616,7 @@ function StepDots({ active }: { active: "listening" | "parsing" | "planning" }) 
         <span
           key={s}
           className={`h-1.5 rounded-full transition-all ${
-            s === active ? "w-8 bg-accent" : "w-1.5 bg-muted"
+            s === active ? "w-8 bg-primary" : "w-1.5 bg-muted"
           }`}
         />
       ))}
@@ -658,7 +658,7 @@ function ReviewView({
             <span
               key={i}
               className={`h-1.5 rounded-full transition-all ${
-                i === index ? "w-8 bg-accent" : i < index ? "w-4 bg-accent/40" : "w-1.5 bg-muted"
+                i === index ? "w-8 bg-primary" : i < index ? "w-4 bg-primary/40" : "w-1.5 bg-muted"
               }`}
             />
           ))}
@@ -676,7 +676,7 @@ function ReviewView({
         {editingTitle ? (
           <input
             autoFocus
-            className="w-full bg-transparent text-2xl font-semibold leading-tight tracking-tight outline-none border-b border-accent/60 pb-1"
+            className="w-full bg-transparent text-2xl font-semibold leading-tight tracking-tight outline-none border-b border-primary/60 pb-1"
             value={task.title}
             onChange={(e) => onChange({ title: e.target.value })}
             onBlur={() => setEditingTitle(false)}
@@ -702,7 +702,7 @@ function ReviewView({
             <div className="flex items-center gap-1.5">
               <input
                 type="time"
-                className="bg-secondary rounded-lg px-2 py-1 text-sm outline-none border border-border tabular-nums focus:border-accent"
+                className="bg-input rounded-lg px-2 py-1 text-sm outline-none border border-border tabular-nums"
                 value={startHM}
                 onChange={(e) => {
                   const dateStr = saigonTodayDateStr();
@@ -714,7 +714,7 @@ function ReviewView({
               <span className="text-muted-foreground text-sm">→</span>
               <input
                 type="time"
-                className="bg-secondary rounded-lg px-2 py-1 text-sm outline-none border border-border tabular-nums focus:border-accent"
+                className="bg-input rounded-lg px-2 py-1 text-sm outline-none border border-border tabular-nums"
                 value={endHM}
                 onChange={(e) => {
                   const dateStr = saigonTodayDateStr();
@@ -744,7 +744,7 @@ function ReviewView({
         <button
           type="button"
           onClick={onApprove}
-          className="flex-[1.4] h-12 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:bg-foreground transition-colors flex items-center justify-center gap-2"
+          className="flex-[1.4] h-12 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:brightness-110 transition-all flex items-center justify-center gap-2 purple-glow"
         >
           <Check className="h-4 w-4" /> Thêm vào Calendar
         </button>
@@ -787,9 +787,9 @@ function DoneView({
   return (
     <div className="flex flex-col items-center text-center gap-8">
       <div className="relative">
-        <span className="absolute inset-0 rounded-full bg-accent/30 blur-2xl" />
-        <div className="relative h-24 w-24 rounded-full bg-accent/15 border border-accent/40 flex items-center justify-center">
-          <Check className="h-10 w-10 text-accent" strokeWidth={2} />
+        <span className="absolute inset-0 rounded-full bg-primary/30 blur-2xl" />
+        <div className="relative h-24 w-24 rounded-full bg-primary/15 border border-primary/40 flex items-center justify-center">
+          <Check className="h-10 w-10 text-primary" strokeWidth={2} />
         </div>
       </div>
       <div className="space-y-1">
@@ -814,7 +814,7 @@ function DoneView({
         <button
           type="button"
           onClick={onAgain}
-          className="h-12 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:bg-foreground transition-colors flex items-center justify-center gap-2"
+          className="h-12 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:brightness-110 transition-all flex items-center justify-center gap-2 purple-glow"
         >
           <Plus className="h-4 w-4" /> Ghi tiếp
         </button>
@@ -842,7 +842,7 @@ function ErrorView({
       <button
         type="button"
         onClick={onRetry}
-        className="h-12 px-6 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:bg-foreground transition-colors flex items-center justify-center gap-2"
+        className="h-12 px-6 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:brightness-110 transition-all flex items-center justify-center gap-2 purple-glow"
       >
         Thử lại
       </button>
