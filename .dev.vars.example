@@ -1,0 +1,22 @@
+# Copy to .dev.vars (gitignored) and fill in real values for local dev.
+# In production, set these in the Lovable secret store instead.
+
+# Speech-to-text — Groq Whisper. Get a free key: https://console.groq.com/keys
+GROQ_API_KEY=
+
+# Task parsing — DeepSeek. Get a key: https://platform.deepseek.com/api_keys
+DEEPSEEK_API_KEY=
+
+# Google Calendar OAuth. Create in Google Cloud Console:
+#   APIs & Services → Credentials → Create Credentials → OAuth client ID → type "Web application"
+#   Authorized redirect URIs must include BOTH:
+#     http://localhost:<dev-port>/auth/callback   (port printed by `vite dev`)
+#     https://<your-production-domain>/auth/callback
+#   Also enable "Google Calendar API" and add yourself as a Test user (or Publish the app
+#   to avoid the 7-day refresh-token expiry in Testing mode).
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# Encrypts the `tempo-google` session cookie that stores the Google refresh token.
+# Use a random string of at least 32 characters, e.g. `openssl rand -base64 32`.
+SESSION_SECRET=

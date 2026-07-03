@@ -25,6 +25,7 @@ import {
   createEvent,
   type ParsedTask,
 } from "@/lib/tempo.functions";
+import { getGoogleAuthUrl, googleStatus } from "@/lib/google.functions";
 
 export const Route = createFileRoute("/")({
   component: Tempo,
@@ -209,10 +210,17 @@ function Tempo() {
   const [lastMeet, setLastMeet] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
+  // Kết nối Google Calendar (modal + popup đăng nhập)
+  const [showConnect, setShowConnect] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const connectResolverRef = useRef<((ok: boolean) => void) | null>(null);
+
   const transcribeFn = useServerFn(transcribeAudio);
   const parseFn = useServerFn(parseTasks);
   const listFn = useServerFn(listTodayEvents);
   const createFn = useServerFn(createEvent);
+  const authUrlFn = useServerFn(getGoogleAuthUrl);
+  const statusFn = useServerFn(googleStatus);
 
   // Recording refs
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -293,6 +301,73 @@ function Tempo() {
     }
   }, []);
 
+  // Đảm bảo đã kết nối Google; nếu chưa → mở modal và chờ người dùng đăng nhập.
+  const ensureGoogleConnected = useCallback(async (): Promise<boolean> => {
+    try {
+      const { connected } = await statusFn();
+      if (connected) return true;
+    } catch {
+      // status lỗi (vd thiếu SESSION_SECRET) → vẫn mở modal để thử kết nối
+    }
+    setShowConnect(true);
+    return new Promise<boolean>((resolve) => {
+      connectResolverRef.current = resolve;
+    });
+  }, [statusFn]);
+
+  const startGoogleLogin = useCallback(async () => {
+    if (connecting) return;
+    setConnecting(true);
+    try {
+      const redirectUri = `${window.location.origin}/auth/callback`;
+      const { url } = await authUrlFn({ data: { redirectUri } });
+      const popup = window.open(url, "google-oauth", "popup,width=480,height=640");
+      if (!popup) {
+        // popup bị chặn → fallback redirect cả trang (chấp nhận mất task đang parse)
+        window.location.href = url;
+      }
+    } catch (e) {
+      setConnecting(false);
+      toast.error(e instanceof Error ? e.message : "Không mở được đăng nhập Google");
+    }
+  }, [authUrlFn, connecting]);
+
+  const cancelConnect = useCallback(() => {
+    setShowConnect(false);
+    setConnecting(false);
+    connectResolverRef.current?.(false);
+    connectResolverRef.current = null;
+  }, []);
+
+  // Nhận tín hiệu từ popup /auth/callback
+  useEffect(() => {
+    function onMessage(e: MessageEvent) {
+      if (e.origin !== window.location.origin) return;
+      if (e.data === "google-connected") {
+        statusFn()
+          .then(({ connected }) => {
+            setConnecting(false);
+            if (connected) {
+              setShowConnect(false);
+              connectResolverRef.current?.(true);
+              connectResolverRef.current = null;
+            }
+          })
+          .catch(() => {
+            setConnecting(false);
+            setShowConnect(false);
+            connectResolverRef.current?.(true);
+            connectResolverRef.current = null;
+          });
+      } else if (e.data === "google-error") {
+        setConnecting(false);
+        toast.error("Kết nối Google thất bại. Hãy thử lại.");
+      }
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [statusFn]);
+
   const stopAndSubmit = useCallback(async () => {
     const ctx = audioCtxRef.current;
     const chunks = chunksRef.current;
@@ -338,6 +413,12 @@ function Tempo() {
       }
 
       setProcessStep("parsing");
+      const connectedOk = await ensureGoogleConnected();
+      if (!connectedOk) {
+        setError("Cần kết nối Google Calendar để xếp lịch. Hãy thử lại.");
+        setPhase("error");
+        return;
+      }
       const [{ tasks: parsed }, { busy }] = await Promise.all([
         parseFn({ data: { transcript: text } }),
         listFn(),
@@ -413,7 +494,7 @@ function Tempo() {
       setError(msg);
       setPhase("error");
     }
-  }, [transcribeFn, parseFn, listFn, cleanupAudio]);
+  }, [transcribeFn, parseFn, listFn, cleanupAudio, ensureGoogleConnected]);
 
   const current = tasks[index];
 
@@ -458,12 +539,36 @@ function Tempo() {
       nextOrDone();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Không thêm được vào Calendar";
+      // Token Google có thể hết hạn giữa chừng → kiểm tra lại; mất kết nối thì mời kết nối lại.
+      let disconnected = false;
+      try {
+        const { connected } = await statusFn();
+        disconnected = !connected;
+      } catch {
+        disconnected = false;
+      }
+      if (disconnected) {
+        const ok = await ensureGoogleConnected();
+        if (ok) {
+          toast.message("Đã kết nối lại Google — hãy bấm Thêm lại.");
+          return;
+        }
+      }
       setError(msg);
       setPhase("error");
     } finally {
       setCreating(false);
     }
-  }, [current, createFn, nextOrDone, index, tasks.length, creating]);
+  }, [
+    current,
+    createFn,
+    nextOrDone,
+    index,
+    tasks.length,
+    creating,
+    statusFn,
+    ensureGoogleConnected,
+  ]);
 
   const updateCurrent = (patch: Partial<ReviewTask>) => {
     setTasks((prev) => {
@@ -543,6 +648,48 @@ function Tempo() {
 
         <Footer />
       </div>
+
+      <AnimatePresence>
+        {showConnect && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="w-full max-w-sm rounded-2xl border border-border bg-background p-6 text-center shadow-xl"
+              initial={{ opacity: 0, y: 12, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.98 }}
+              transition={{ duration: 0.24, ease: "easeOut" }}
+            >
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 text-primary">
+                <CalIcon className="h-6 w-6" />
+              </div>
+              <h2 className="text-base font-semibold">Kết nối Google Calendar</h2>
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                Đăng nhập Google để Tempo thêm sự kiện vào lịch của bạn. Chỉ cần làm 1 lần trên
+                thiết bị này.
+              </p>
+              <button
+                onClick={startGoogleLogin}
+                disabled={connecting}
+                className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
+              >
+                {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {connecting ? "Đang chờ đăng nhập…" : "Đăng nhập bằng Google"}
+              </button>
+              <button
+                onClick={cancelConnect}
+                className="mt-2 w-full rounded-xl px-4 py-2.5 text-sm text-muted-foreground transition hover:text-foreground"
+              >
+                Để sau
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

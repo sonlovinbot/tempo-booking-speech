@@ -1,21 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-
-const AI_BASE = "https://ai.gateway.lovable.dev/v1";
-const GCAL_BASE =
-  "https://connector-gateway.lovable.dev/google_calendar/calendar/v3";
+const GROQ_BASE = "https://api.groq.com/openai/v1";
+const DEEPSEEK_BASE = "https://api.deepseek.com";
+const GCAL_BASE = "https://www.googleapis.com/calendar/v3";
 const TZ = "Asia/Ho_Chi_Minh";
 
-function gcalHeaders() {
-  const lovableKey = process.env.LOVABLE_API_KEY;
-  const connKey = process.env.GOOGLE_CALENDAR_API_KEY;
-  if (!lovableKey) throw new Error("LOVABLE_API_KEY chưa được cấu hình");
-  if (!connKey)
-    throw new Error("Google Calendar chưa được kết nối (GOOGLE_CALENDAR_API_KEY)");
+async function gcalHeaders() {
+  const { getAccessToken } = await import("./google.server");
+  const token = await getAccessToken();
   return {
-    Authorization: `Bearer ${lovableKey}`,
-    "X-Connection-Api-Key": connKey,
+    Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
   };
 }
@@ -31,8 +26,8 @@ const TranscribeInput = z.object({
 export const transcribeAudio = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => TranscribeInput.parse(d))
   .handler(async ({ data }) => {
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("LOVABLE_API_KEY chưa được cấu hình");
+    const key = process.env.GROQ_API_KEY;
+    if (!key) throw new Error("GROQ_API_KEY chưa được cấu hình");
 
     const bin = Uint8Array.from(atob(data.audioBase64), (c) => c.charCodeAt(0));
     const ext = data.mime.includes("mp3")
@@ -43,12 +38,12 @@ export const transcribeAudio = createServerFn({ method: "POST" })
           ? "webm"
           : "wav";
     const form = new FormData();
-    form.append("model", "openai/gpt-4o-mini-transcribe");
+    form.append("model", "whisper-large-v3");
     form.append("file", new Blob([bin], { type: data.mime }), `recording.${ext}`);
     // language hint (Vietnamese)
     form.append("language", "vi");
 
-    const res = await fetch(`${AI_BASE}/audio/transcriptions`, {
+    const res = await fetch(`${GROQ_BASE}/audio/transcriptions`, {
       method: "POST",
       headers: { Authorization: `Bearer ${key}` },
       body: form,
@@ -61,7 +56,7 @@ export const transcribeAudio = createServerFn({ method: "POST" })
     return { text: (json.text ?? "").trim() };
   });
 
-// ---------- Parse tasks with Gemini ----------
+// ---------- Parse tasks with DeepSeek ----------
 
 const ParseInput = z.object({ transcript: z.string().min(1).max(10_000) });
 
@@ -77,8 +72,8 @@ export type ParsedTask = {
 export const parseTasks = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => ParseInput.parse(d))
   .handler(async ({ data }): Promise<{ tasks: ParsedTask[] }> => {
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("LOVABLE_API_KEY chưa được cấu hình");
+    const key = process.env.DEEPSEEK_API_KEY;
+    if (!key) throw new Error("DEEPSEEK_API_KEY chưa được cấu hình");
 
     const now = new Date();
     const nowStr = new Intl.DateTimeFormat("vi-VN", {
@@ -101,14 +96,14 @@ export const parseTasks = createServerFn({ method: "POST" })
     }).format(now); // "Thứ Hai" / "Chủ Nhật"
 
     const body = {
-      model: "google/gemini-3-flash-preview",
+      model: "deepseek-chat",
       messages: [
         {
           role: "system",
           content:
             "Bạn trích xuất danh sách công việc từ câu nói tiếng Việt.\n" +
             `Hiện tại (Asia/Ho_Chi_Minh): ${todayStr} ${nowStr}, ${weekdayVi}.\n` +
-            "Trả về JSON DUY NHẤT dạng: {\"tasks\":[{\"title\":string, \"durationMin\":number, \"explicitStart\":string|null, \"explicitEnd\":string|null, \"explicitDate\":string|null, \"description\":string|null}]}\n" +
+            'Trả về JSON DUY NHẤT dạng: {"tasks":[{"title":string, "durationMin":number, "explicitStart":string|null, "explicitEnd":string|null, "explicitDate":string|null, "description":string|null}]}\n' +
             "\n" +
             "QUY TẮC NGÀY (explicitDate = YYYY-MM-DD hoặc null nếu không nói):\n" +
             "- 'hôm nay' = hôm nay. 'ngày mai' = +1 ngày. 'hôm qua' = -1 ngày. 'ngày kia' = +2 ngày.\n" +
@@ -144,7 +139,7 @@ export const parseTasks = createServerFn({ method: "POST" })
       response_format: { type: "json_object" },
     };
 
-    const res = await fetch(`${AI_BASE}/chat/completions`, {
+    const res = await fetch(`${DEEPSEEK_BASE}/chat/completions`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${key}`,
@@ -184,8 +179,7 @@ export const parseTasks = createServerFn({ method: "POST" })
             ? o.explicitEnd
             : undefined;
         const date =
-          typeof o.explicitDate === "string" &&
-          /^\d{4}-\d{2}-\d{2}$/.test(o.explicitDate)
+          typeof o.explicitDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(o.explicitDate)
             ? o.explicitDate
             : undefined;
         const desc =
@@ -228,39 +222,34 @@ function todayBoundsISO() {
   };
 }
 
-export const listTodayEvents = createServerFn({ method: "GET" }).handler(
-  async () => {
-    const { startISO, endISO } = todayBoundsISO();
-    const url = new URL(`${GCAL_BASE}/calendars/primary/events`);
-    url.searchParams.set("timeMin", startISO);
-    url.searchParams.set("timeMax", endISO);
-    url.searchParams.set("singleEvents", "true");
-    url.searchParams.set("orderBy", "startTime");
-    url.searchParams.set("maxResults", "50");
+export const listTodayEvents = createServerFn({ method: "GET" }).handler(async () => {
+  const { startISO, endISO } = todayBoundsISO();
+  const url = new URL(`${GCAL_BASE}/calendars/primary/events`);
+  url.searchParams.set("timeMin", startISO);
+  url.searchParams.set("timeMax", endISO);
+  url.searchParams.set("singleEvents", "true");
+  url.searchParams.set("orderBy", "startTime");
+  url.searchParams.set("maxResults", "50");
 
-    const res = await fetch(url.toString(), { headers: gcalHeaders() });
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      throw new Error(`Calendar lỗi ${res.status}: ${txt.slice(0, 200)}`);
-    }
-    const json = (await res.json()) as {
-      items?: Array<{
-        start?: { dateTime?: string; date?: string };
-        end?: { dateTime?: string; date?: string };
-      }>;
-    };
-    const busy = (json.items ?? [])
-      .map((e) => ({
-        startISO: e.start?.dateTime ?? null,
-        endISO: e.end?.dateTime ?? null,
-      }))
-      .filter(
-        (b): b is { startISO: string; endISO: string } =>
-          !!b.startISO && !!b.endISO,
-      );
-    return { busy };
-  },
-);
+  const res = await fetch(url.toString(), { headers: await gcalHeaders() });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`Calendar lỗi ${res.status}: ${txt.slice(0, 200)}`);
+  }
+  const json = (await res.json()) as {
+    items?: Array<{
+      start?: { dateTime?: string; date?: string };
+      end?: { dateTime?: string; date?: string };
+    }>;
+  };
+  const busy = (json.items ?? [])
+    .map((e) => ({
+      startISO: e.start?.dateTime ?? null,
+      endISO: e.end?.dateTime ?? null,
+    }))
+    .filter((b): b is { startISO: string; endISO: string } => !!b.startISO && !!b.endISO);
+  return { busy };
+});
 
 // ---------- Create event ----------
 
@@ -302,7 +291,7 @@ export const createEvent = createServerFn({ method: "POST" })
     if (data.addMeet) url.searchParams.set("conferenceDataVersion", "1");
     const res = await fetch(url.toString(), {
       method: "POST",
-      headers: gcalHeaders(),
+      headers: await gcalHeaders(),
       body: JSON.stringify(body),
     });
     if (!res.ok) {
