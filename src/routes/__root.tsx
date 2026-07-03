@@ -17,17 +17,19 @@ function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
+        <h1 className="text-7xl font-bold tracking-tight text-foreground">
+          4<span className="text-primary">0</span>4
+        </h1>
+        <h2 className="mt-4 text-xl font-semibold text-foreground">Không tìm thấy trang</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
+          Trang bạn tìm không tồn tại hoặc đã được chuyển đi.
         </p>
         <div className="mt-6">
           <Link
             to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110 purple-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            Go home
+            Về trang chủ
           </Link>
         </div>
       </div>
@@ -46,10 +48,10 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
+          Trang không tải được
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+          Đã có lỗi xảy ra. Bạn có thể thử lại hoặc quay về trang chủ.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
@@ -57,15 +59,15 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110 purple-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            Try again
+            Thử lại
           </button>
           <a
             href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            className="inline-flex h-11 items-center justify-center rounded-full border border-border bg-transparent px-6 text-sm font-medium text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            Go home
+            Về trang chủ
           </a>
         </div>
       </div>
@@ -81,25 +83,43 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Tempo — Ghi lịch bằng giọng nói" },
       {
         name: "description",
-        content:
-          "Nói ra việc bạn cần làm, Tempo tự động thêm vào Google Calendar hôm nay.",
+        content: "Nói ra việc bạn cần làm, Tempo tự động thêm vào Google Calendar hôm nay.",
       },
       { name: "author", content: "Tempo" },
       { property: "og:title", content: "Tempo — Ghi lịch bằng giọng nói" },
       {
         property: "og:description",
-        content:
-          "Nói ra việc bạn cần làm, Tempo tự động thêm vào Google Calendar hôm nay.",
+        content: "Nói ra việc bạn cần làm, Tempo tự động thêm vào Google Calendar hôm nay.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "theme-color", content: "#0a0a0a" },
       { name: "twitter:title", content: "Tempo — Ghi lịch bằng giọng nói" },
-      { name: "description", content: "Tempo is a mobile web app that records voice notes and adds them as tasks to your Google Calendar." },
-      { property: "og:description", content: "Tempo is a mobile web app that records voice notes and adds them as tasks to your Google Calendar." },
-      { name: "twitter:description", content: "Tempo is a mobile web app that records voice notes and adds them as tasks to your Google Calendar." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/8dee85ca-ffc6-4374-8543-3d57a26270f2/id-preview-db747b7f--ce62244b-05f1-40dd-8a96-3b8a7ff022f8.lovable.app-1783014294738.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/8dee85ca-ffc6-4374-8543-3d57a26270f2/id-preview-db747b7f--ce62244b-05f1-40dd-8a96-3b8a7ff022f8.lovable.app-1783014294738.png" },
+      {
+        name: "description",
+        content:
+          "Tempo is a mobile web app that records voice notes and adds them as tasks to your Google Calendar.",
+      },
+      {
+        property: "og:description",
+        content:
+          "Tempo is a mobile web app that records voice notes and adds them as tasks to your Google Calendar.",
+      },
+      {
+        name: "twitter:description",
+        content:
+          "Tempo is a mobile web app that records voice notes and adds them as tasks to your Google Calendar.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/8dee85ca-ffc6-4374-8543-3d57a26270f2/id-preview-db747b7f--ce62244b-05f1-40dd-8a96-3b8a7ff022f8.lovable.app-1783014294738.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/8dee85ca-ffc6-4374-8543-3d57a26270f2/id-preview-db747b7f--ce62244b-05f1-40dd-8a96-3b8a7ff022f8.lovable.app-1783014294738.png",
+      },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },

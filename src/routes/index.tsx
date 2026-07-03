@@ -99,8 +99,7 @@ function encodeWAV(samples: Int16Array, sampleRate: number) {
   view.setUint16(34, 16, true);
   writeStr(36, "data");
   view.setUint32(40, samples.length * 2, true);
-  for (let i = 0; i < samples.length; i++)
-    view.setInt16(44 + i * 2, samples[i], true);
+  for (let i = 0; i < samples.length; i++) view.setInt16(44 + i * 2, samples[i], true);
   return new Blob([buffer], { type: "audio/wav" });
 }
 
@@ -132,12 +131,7 @@ function isoFromSaigonHM(dateStr: string, hhmm: string) {
   return new Date(`${dateStr}T${hhmm}:00+07:00`).toISOString();
 }
 
-function findSlot(
-  busy: Busy[],
-  cursorISO: string,
-  durationMin: number,
-  dayEndISO: string,
-): string {
+function findSlot(busy: Busy[], cursorISO: string, durationMin: number, dayEndISO: string): string {
   // Find earliest start >= cursor where [start, start+dur) doesn't overlap any busy.
   const durMs = durationMin * 60_000;
   const sorted = [...busy].sort(
@@ -206,9 +200,7 @@ function Tempo() {
   const [error, setError] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [levels, setLevels] = useState<number[]>(new Array(24).fill(0.08));
-  const [processStep, setProcessStep] = useState<
-    "listening" | "parsing" | "planning"
-  >("listening");
+  const [processStep, setProcessStep] = useState<"listening" | "parsing" | "planning">("listening");
 
   const [tasks, setTasks] = useState<ReviewTask[]>([]);
   const [index, setIndex] = useState(0);
@@ -254,10 +246,9 @@ function Tempo() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
-      const AC =
-        (window.AudioContext ||
-          (window as unknown as { webkitAudioContext: typeof AudioContext })
-            .webkitAudioContext) as typeof AudioContext;
+      const AC = (window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext })
+          .webkitAudioContext) as typeof AudioContext;
       const ctx = new AC();
       audioCtxRef.current = ctx;
       const source = ctx.createMediaStreamSource(stream);
@@ -296,8 +287,7 @@ function Tempo() {
       };
       rafRef.current = requestAnimationFrame(tick);
     } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : "Không truy cập được micro";
+      const msg = err instanceof Error ? err.message : "Không truy cập được micro";
       setError(`Không thể ghi âm: ${msg}`);
       setPhase("error");
     }
@@ -386,18 +376,14 @@ function Tempo() {
           endISO = isoFromSaigonHM(dateStr, t.explicitEnd);
           // Nếu end <= start, đẩy end sang qua ngày không hợp lý → fallback dùng durationMin.
           if (new Date(endISO).getTime() <= new Date(startISO).getTime()) {
-            endISO = new Date(
-              new Date(startISO).getTime() + durationMin * 60_000,
-            ).toISOString();
+            endISO = new Date(new Date(startISO).getTime() + durationMin * 60_000).toISOString();
           } else {
             durationMin = Math.round(
               (new Date(endISO).getTime() - new Date(startISO).getTime()) / 60_000,
             );
           }
         } else {
-          endISO = new Date(
-            new Date(startISO).getTime() + durationMin * 60_000,
-          ).toISOString();
+          endISO = new Date(new Date(startISO).getTime() + durationMin * 60_000).toISOString();
         }
         // Reserve so subsequent auto-scheduled tasks (cùng ngày hôm nay) không chồng
         if (isToday) {
@@ -492,8 +478,7 @@ function Tempo() {
       }
       // Luôn tính lại durationMin từ start/end.
       const diff = Math.round(
-        (new Date(next.endISO).getTime() - new Date(next.startISO).getTime()) /
-          60_000,
+        (new Date(next.endISO).getTime() - new Date(next.startISO).getTime()) / 60_000,
       );
       next.durationMin = diff > 0 ? diff : next.durationMin;
       copy[index] = next;
@@ -528,11 +513,7 @@ function Tempo() {
             >
               {phase === "idle" && <IdleView onStart={startRecording} />}
               {phase === "recording" && (
-                <RecordingView
-                  elapsed={elapsed}
-                  levels={levels}
-                  onStop={stopAndSubmit}
-                />
+                <RecordingView elapsed={elapsed} levels={levels} onStop={stopAndSubmit} />
               )}
               {phase === "processing" && <ProcessingView step={processStep} />}
               {phase === "reviewing" && current && (
@@ -555,9 +536,7 @@ function Tempo() {
                   onAgain={reset}
                 />
               )}
-              {phase === "error" && (
-                <ErrorView message={error ?? "Có lỗi"} onRetry={reset} />
-              )}
+              {phase === "error" && <ErrorView message={error ?? "Có lỗi"} onRetry={reset} />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -573,9 +552,7 @@ function Header() {
     <header className="flex items-center justify-between">
       <div className="flex items-center gap-2">
         <div className="h-8 w-8 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center">
-          <span className="text-primary font-semibold text-sm tracking-tight">
-            T
-          </span>
+          <span className="text-primary font-semibold text-sm tracking-tight">T</span>
         </div>
         <span className="font-semibold tracking-tight text-lg">Tempo</span>
       </div>
@@ -621,12 +598,12 @@ function IdleView({ onStart }: { onStart: () => void }) {
 
       <motion.div variants={item} className="space-y-3">
         <h1 className="text-hero">
-          Nói ra,<br />
+          Nói ra,
+          <br />
           <span className="text-primary">Tempo</span> sắp xếp.
         </h1>
         <p className="text-muted-foreground text-[15px] leading-relaxed max-w-[300px] mx-auto">
-          Bấm và nói việc bạn cần làm hôm nay. Tempo sẽ thêm chúng vào Google
-          Calendar giúp bạn.
+          Bấm và nói việc bạn cần làm hôm nay. Tempo sẽ thêm chúng vào Google Calendar giúp bạn.
         </p>
       </motion.div>
 
@@ -703,11 +680,7 @@ function RecordingView({
   );
 }
 
-function ProcessingView({
-  step,
-}: {
-  step: "listening" | "parsing" | "planning";
-}) {
+function ProcessingView({ step }: { step: "listening" | "parsing" | "planning" }) {
   const labels: Record<typeof step, string> = {
     listening: "Đang nghe lại…",
     parsing: "Đang hiểu nội dung…",
@@ -731,11 +704,7 @@ function ProcessingView({
 }
 
 function StepDots({ active }: { active: "listening" | "parsing" | "planning" }) {
-  const order: Array<"listening" | "parsing" | "planning"> = [
-    "listening",
-    "parsing",
-    "planning",
-  ];
+  const order: Array<"listening" | "parsing" | "planning"> = ["listening", "parsing", "planning"];
   return (
     <div className="flex gap-1.5">
       {order.map((s) => (
@@ -797,9 +766,7 @@ function ReviewView({
       </div>
 
       <div className="rounded-3xl bg-card border border-border p-6 space-y-5">
-        <div className="text-xs text-muted-foreground uppercase tracking-wider">
-          Xác nhận task
-        </div>
+        <div className="text-xs text-muted-foreground uppercase tracking-wider">Xác nhận task</div>
 
         {editingTitle ? (
           <input
@@ -835,7 +802,7 @@ function ReviewView({
             <div className="flex items-center gap-1.5">
               <input
                 type="time"
-                className="bg-input rounded-lg px-2 py-1 text-sm outline-none border border-border tabular-nums"
+                className="bg-input rounded-lg px-2 py-1 text-sm outline-none border border-border tabular-nums focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-primary/60"
                 value={startHM}
                 onChange={(e) => {
                   const dateStr = saigonDateStrOf(task.startISO);
@@ -847,7 +814,7 @@ function ReviewView({
               <span className="text-muted-foreground text-sm">→</span>
               <input
                 type="time"
-                className="bg-input rounded-lg px-2 py-1 text-sm outline-none border border-border tabular-nums"
+                className="bg-input rounded-lg px-2 py-1 text-sm outline-none border border-border tabular-nums focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-primary/60"
                 value={endHM}
                 onChange={(e) => {
                   const dateStr = saigonDateStrOf(task.endISO);
@@ -859,9 +826,7 @@ function ReviewView({
             </div>
           </Row>
           <Row icon={<Clock className="h-4 w-4" />} label="Thời lượng">
-            <span className="text-sm tabular-nums text-muted-foreground">
-              {durLabel}
-            </span>
+            <span className="text-sm tabular-nums text-muted-foreground">{durLabel}</span>
           </Row>
           <Row icon={<Bell className="h-4 w-4" />} label="Nhắc hẹn">
             <select
@@ -870,7 +835,7 @@ function ReviewView({
                 const v = e.target.value;
                 onChange({ reminderMin: v === "off" ? null : Number(v) });
               }}
-              className="bg-input border border-border rounded-full px-3 py-1 text-sm outline-none focus:border-primary/60 cursor-pointer"
+              className="bg-input border border-border rounded-full px-3 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus:border-primary/60 cursor-pointer"
             >
               <option value="off">Tắt</option>
               <option value="5">5 phút trước</option>
@@ -916,7 +881,7 @@ function ReviewView({
             onChange={(e) => onChange({ description: e.target.value })}
             placeholder="Thêm ghi chú, địa điểm, người tham gia…"
             rows={3}
-            className="w-full bg-input border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary/60 resize-none placeholder:text-muted-foreground/60"
+            className="w-full bg-input border border-border rounded-xl px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus:border-primary/60 resize-none placeholder:text-muted-foreground/60"
           />
         </div>
       </div>
@@ -1033,13 +998,7 @@ function DoneView({
   );
 }
 
-function ErrorView({
-  message,
-  onRetry,
-}: {
-  message: string;
-  onRetry: () => void;
-}) {
+function ErrorView({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <div className="flex flex-col items-center text-center gap-6">
       <div className="h-20 w-20 rounded-full bg-destructive/10 border border-destructive/40 flex items-center justify-center">
