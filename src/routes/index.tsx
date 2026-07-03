@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, type Variants } from "motion/react";
@@ -25,13 +25,8 @@ import {
   createEvent,
   type ParsedTask,
 } from "@/lib/tempo.functions";
-import { isUnlocked } from "@/lib/gate.functions";
 
 export const Route = createFileRoute("/")({
-  beforeLoad: async () => {
-    const { unlocked } = await isUnlocked();
-    if (!unlocked) throw redirect({ to: "/unlock" });
-  },
   component: Tempo,
 });
 
