@@ -40,4 +40,11 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  // Deploy target: hard-pin Nitro's Vercel preset for our own builds (Vercel Git/CLI).
+  // This emits the Vercel Build Output API (`.vercel/output`) instead of the Cloudflare
+  // default. Lovable's own build ignores this and force-targets Cloudflare, so the
+  // existing Lovable sync keeps working. See docs/DEPLOY_VERCEL.md.
+  nitro: {
+    preset: "vercel",
+  },
 });
