@@ -44,18 +44,43 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
+// Baseline HTTP security headers applied to every response the server emits (SSR
+// documents + server functions). Application-layer so it holds on any Nitro preset
+// (Vercel, Cloudflare/Lovable). `microphone=(self)` is required — the core feature
+// records audio in-browser. Set defensively so an immutable response never throws.
+const SECURITY_HEADERS: Record<string, string> = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+  "Permissions-Policy": "camera=(), microphone=(self), geolocation=()",
+};
+
+function withSecurityHeaders(response: Response): Response {
+  try {
+    for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+      if (!response.headers.has(name)) response.headers.set(name, value);
+    }
+  } catch {
+    // Some responses (e.g. redirects) have immutable headers — return as-is.
+  }
+  return response;
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      return withSecurityHeaders(await normalizeCatastrophicSsrResponse(response));
     } catch (error) {
       console.error(error);
-      return new Response(renderErrorPage(), {
-        status: 500,
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
+      return withSecurityHeaders(
+        new Response(renderErrorPage(), {
+          status: 500,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        }),
+      );
     }
   },
 };
